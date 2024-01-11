@@ -144,9 +144,7 @@ def call_openai_api_to_summarize_paper(parsed_summary_file, n_threads: int = 3, 
 
     
 
-
 if __name__ == '__main__':
-
     # Load environmental variables from the .env file
     load_dotenv()
     assert "OPENAI_API_KEY" in os.environ, "OPENAI_API_KEY environment variable not found"

@@ -12,11 +12,9 @@ confnavigator_logger = logging.getLogger(__name__)
 # Step 4: Optional - Add handlers (e.g., FileHandler)
 file_handler = logging.FileHandler('confnavigator_logfile.log')
 log_file_format = logging.Formatter(logging_format_str)
+
 file_handler.setFormatter(log_file_format)
 
 confnavigator_logger.addHandler(file_handler)
 
-# # Example of logging messages in your code
-# logger.info("This is an info message")
-# logger.warning("This is a warning message")
-# logger.error("This is an error message")
+
