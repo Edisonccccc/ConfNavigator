@@ -1,76 +1,18 @@
-import csv
-import os
-import fitz  # PyMuPDF
-from abc import ABC, abstractmethod
-import json
-import traceback
-import os
-import traceback
-import json
-from dotenv import load_dotenv
-import pandas as pd
+import argparse
 import sys
 import time
+import os
+import json
+import traceback
+from abc import ABC, abstractmethod
+
+from dotenv import load_dotenv
+import pandas as pd
+import fitz  # PyMuPDF
 
 import utils as utils
 from utils import CONCLUSION_TITLES, Trie
 from logger import confnavigator_logger
-
-# Step 1: Paper cleaning - to remove papers that are not belonging to this conference
-# Step 2: Paper parsing - parse the pdf into a json with different chapters
-# Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
-
-
-def paper_parsing(paper_pdf_file, is_full_paper: bool = False):
-
-    try:
-        if is_full_paper:
-            paper_content = convert_full_pdf_to_text(paper_pdf_file)
-        else:
-            paper_pdf = PaperPDF(paper_pdf_file)
-            paper_pdf.paper_parsing()
-
-            # TODO: validate if the parsing file is valid like each chapter has content
-            assert paper_pdf.title.content != "", f"{paper_pdf_file} - title is empty"
-            assert paper_pdf.abstract.content != "", f"{paper_pdf_file} - abstract is empty"
-            assert paper_pdf.introduction.content != "", f"{paper_pdf_file} - introduction is empty"
-            assert paper_pdf.conclusion.content != "", f"{paper_pdf_file} - conclusion is empty"
-
-            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters()
-
-            return parsed_paper_json_file_path
-    except Exception as _e:
-        print(_e)
-        traceback.print_exc()
-        print(f"Failed to parse file {paper_pdf_file}")
-        confnavigator_logger.exception(
-            f"Exception in parsing {paper_pdf_file}", _e)
-        confnavigator_logger.error(f"Failed to parse file {paper_pdf_file}")
-
-        return str(_e)
-
-
-def convert_full_pdf_to_text(pdf_file_path):
-    # Open the provided PDF document
-    document = fitz.open(pdf_file_path)
-    # Iterate over each page and extract text
-    text = ""
-    for page_num in range(len(document)):
-        page = document.load_page(page_num)  # zero-based index
-        breakpoint()
-        text += page.get_text()[:-4]
-
-    # Extract the file name with extension
-    filename_with_extension = os.path.basename(pdf_file_path)
-    # Split the file name from its extension
-    filename_without_extension, _ = os.path.splitext(filename_with_extension)
-    output_folder_path = os.path.dirname(pdf_file_path)
-    full_paper_json_file_path = os.path.join(
-        output_folder_path, f"{filename_without_extension}_full_paper.json")
-
-    utils.dump_json_file(text, full_paper_json_file_path)
-
-    return full_paper_json_file_path
 
 
 class PaperChapter(ABC):
@@ -261,7 +203,7 @@ class ConclusionChapter(PaperChapter):
             if "Conclusion" in line:
                 # \n5\nConclusion\n
 
-                if can_be_int(raw_text_in_lines[i - 1]):
+                if utils.can_be_int(raw_text_in_lines[i - 1]):
                     return int(raw_text_in_lines[i - 1])
 
         return -1
@@ -333,7 +275,7 @@ class ReferencesChapter(PaperChapter):
         return content, content_lines_list
 
 
-class PaperPDF():
+class PaperPDFParser():
     def __init__(self, pdf_file_path: str):
         assert os.path.isfile(
             pdf_file_path
@@ -346,7 +288,7 @@ class PaperPDF():
         self.conclusion = ConclusionChapter()
         self.references = ReferencesChapter()
 
-    def paper_parsing(self):
+    def paper_pdf_parsing(self):
         document = fitz.open(self.pdf_file_path)
         # Iterate over each page and extract text
         text = ""
@@ -473,14 +415,6 @@ class PaperPDF():
         return parsed_chapters_json_file_path
 
 
-def can_be_int(s):
-    try:
-        int(s)  # Try to convert the string to an integer
-        return True  # Return True if successful
-    except ValueError:
-        return False  # Return False if a ValueError is raised
-
-
 def find_all_pdf_files_in_folder(folder_path):
     # List all the files in the directory
     all_files = os.listdir(folder_path)
@@ -491,6 +425,58 @@ def find_all_pdf_files_in_folder(folder_path):
     ]
 
     return pdf_files
+
+
+def parse_paper(paper_pdf_file, is_full_paper: bool = False):
+
+    try:
+        if is_full_paper:
+            paper_content = convert_full_pdf_to_text(paper_pdf_file)
+        else:
+            paper_pdf = PaperPDFParser(paper_pdf_file)
+            paper_pdf.paper_pdf_parsing()
+
+            # TODO: validate if the parsing file is valid like each chapter has content
+            assert paper_pdf.title.content != "", f"{paper_pdf_file} - title is empty"
+            assert paper_pdf.abstract.content != "", f"{paper_pdf_file} - abstract is empty"
+            assert paper_pdf.introduction.content != "", f"{paper_pdf_file} - introduction is empty"
+            assert paper_pdf.conclusion.content != "", f"{paper_pdf_file} - conclusion is empty"
+
+            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters()
+
+            return parsed_paper_json_file_path
+    except Exception as _e:
+        print(_e)
+        traceback.print_exc()
+        print(f"Failed to parse file {paper_pdf_file}")
+        confnavigator_logger.exception(
+            f"Exception in parsing {paper_pdf_file}", _e)
+        confnavigator_logger.error(f"Failed to parse file {paper_pdf_file}")
+
+        return str(_e)
+
+
+def convert_full_pdf_to_text(pdf_file_path):
+    # Open the provided PDF document
+    document = fitz.open(pdf_file_path)
+    # Iterate over each page and extract text
+    text = ""
+    for page_num in range(len(document)):
+        page = document.load_page(page_num)  # zero-based index
+        breakpoint()
+        text += page.get_text()[:-4]
+
+    # Extract the file name with extension
+    filename_with_extension = os.path.basename(pdf_file_path)
+    # Split the file name from its extension
+    filename_without_extension, _ = os.path.splitext(filename_with_extension)
+    output_folder_path = os.path.dirname(pdf_file_path)
+    full_paper_json_file_path = os.path.join(
+        output_folder_path, f"{filename_without_extension}_full_paper.json")
+
+    utils.dump_json_file(text, full_paper_json_file_path)
+
+    return full_paper_json_file_path
 
 
 def select_papers_based_on_year(paper_pdf_files):
@@ -516,8 +502,10 @@ def convert_arxiv_csv_to_json(csv_file_path):
 
     # Reading the CSV data into a DataFrame
     df = pd.read_csv(csv_file_path)
+
     # Dropping the first column as it's not needed (optional)
     # df = df.drop(df.columns[0], axis=1)
+
     # Convert the DataFrame to a list of dictionaries (each dictionary representing a paper)
     json_data = df.to_dict(orient='records')
     # Extract the file name with extension
@@ -531,112 +519,80 @@ def convert_arxiv_csv_to_json(csv_file_path):
     return arxiv_json_file
 
 
-if __name__ == '__main__':
-
-    # Load environmental variables from the .env file
-    load_dotenv()
-
+def filter_papers_in_folder(conference_paper_folder):
     paper_metadata_summary = {}
+    paper_pdf_files = find_all_pdf_files_in_folder(
+        folder_path=conference_paper_folder)
+    # Select papers that were published in 2023.
+    papers_in_2023, papers_not_in_2023 = select_papers_based_on_year(
+        paper_pdf_files)
+    paper_metadata_summary["papers_in_2023"] = papers_in_2023
+    paper_metadata_summary["papers_not_in_2023"] = papers_not_in_2023
+    paper_metadata_summary["papers_in_2023_count"] = len(papers_in_2023)
+    paper_metadata_summary["papers_not_in_2023_count"] = len(
+        papers_not_in_2023)
 
-    skip_year_filtering = True
-    skip_paper_parsing = True
+    return paper_metadata_summary
 
-    parsed_summary_file = f"{os.getcwd()}/paper_metadata_summary.json"
-    folder_path = '/import/snvm-sc-podscratch1/qingjianl2/nips_2023_conference_papers/neurips2023_pdf_0109'
 
-    if not skip_year_filtering:
-        # Start the timer
-        start_time = time.time()
-        paper_metadata_summary = {}
+def parse_all_papers(paper_metadata_summary):
+    paper_metadata_summary["mapping_pdf_to_json"] = {}
+    paper_metadata_summary["mapping_json_to_pdf"] = {}
+    parsed_2023_paper_json_files = []
 
-        paper_pdf_files = find_all_pdf_files_in_folder(folder_path=folder_path)
-        # Select papers that were published in 2023.
-        papers_in_2023, papers_not_in_2023 = select_papers_based_on_year(
-            paper_pdf_files)
-        paper_metadata_summary["papers_in_2023"] = papers_in_2023
-        paper_metadata_summary["papers_not_in_2023"] = papers_not_in_2023
-        paper_metadata_summary["papers_in_2023_count"] = len(papers_in_2023)
-        paper_metadata_summary["papers_not_in_2023_count"] = len(
-            papers_not_in_2023)
+    title_empty_papers = []
+    abstract_empty_papers = []
+    introduction_empty_papers = []
+    conclusion_empty_papers = []
+    # TODO: Skip the paper pdf file if a json file is already available.
+    # Step 1: Parse all papers in PDF format and convert them into Json format.
+    for paper_pdf_file in paper_metadata_summary["papers_in_2023"]:
+        parsed_paper_json_file = parse_paper(paper_pdf_file)
+        if os.path.isfile(parsed_paper_json_file):
+            parsed_2023_paper_json_files.append(parsed_paper_json_file)
+            paper_metadata_summary["mapping_pdf_to_json"][
+                paper_pdf_file] = parsed_paper_json_file
+            paper_metadata_summary["mapping_json_to_pdf"][
+                parsed_paper_json_file] = paper_pdf_file
+        elif 'title is empty' in parsed_paper_json_file:
+            title_empty_papers.append(parsed_paper_json_file)
+        elif 'abstract is empty' in parsed_paper_json_file:
+            abstract_empty_papers.append(parsed_paper_json_file)
+        elif 'introduction is empty' in parsed_paper_json_file:
+            introduction_empty_papers.append(parsed_paper_json_file)
+        elif 'conclusion is empty' in parsed_paper_json_file:
+            conclusion_empty_papers.append(parsed_paper_json_file)
 
-        # End the timer
-        end_time = time.time()
-        time_taken = end_time - start_time
-        confnavigator_logger.info(f"Filter 2023 papers cost {time_taken} s")
+    paper_metadata_summary[
+        "2023_paper_parsed_jsons"] = parsed_2023_paper_json_files
+    paper_metadata_summary['2023_paper_parsed_jsons_count'] = len(
+        parsed_2023_paper_json_files)
 
-        utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
-    else:
-        paper_metadata_summary = utils.read_json_file(parsed_summary_file)
+    paper_metadata_summary['2023_paper_title_empty'] = title_empty_papers
+    paper_metadata_summary['2023_paper_title_empty_count'] = len(
+        title_empty_papers)
+    paper_metadata_summary['2023_paper_abstract_empty'] = abstract_empty_papers
+    paper_metadata_summary['2023_paper_abstract_empty_count'] = len(
+        abstract_empty_papers)
+    paper_metadata_summary[
+        '2023_paper_introduction_empty'] = introduction_empty_papers
+    paper_metadata_summary['2023_paper_introduction_empty_count'] = len(
+        introduction_empty_papers)
+    paper_metadata_summary[
+        '2023_paper_conclusion_empty'] = conclusion_empty_papers
+    paper_metadata_summary['2023_paper_conclusion_empty_count'] = len(
+        conclusion_empty_papers)
 
-    if not skip_paper_parsing:
+    return paper_metadata_summary
 
-        # Start the timer
-        start_time = time.time()
 
-        paper_metadata_summary["mapping_pdf_to_json"] = {}
-        paper_metadata_summary["mapping_json_to_pdf"] = {}
-        parsed_2023_paper_json_files = []
-
-        title_empty_papers = []
-        abstract_empty_papers = []
-        introduction_empty_papers = []
-        conclusion_empty_papers = []
-        # TODO: Skip the paper pdf file if a json file is already available.
-        # Step 1: Parse all papers in PDF format and convert them into Json format.
-        for paper_pdf_file in paper_metadata_summary["papers_in_2023"]:
-            parsed_paper_json_file = paper_parsing(paper_pdf_file)
-            if os.path.isfile(parsed_paper_json_file):
-                parsed_2023_paper_json_files.append(parsed_paper_json_file)
-                paper_metadata_summary["mapping_pdf_to_json"][
-                    paper_pdf_file] = parsed_paper_json_file
-                paper_metadata_summary["mapping_json_to_pdf"][
-                    parsed_paper_json_file] = paper_pdf_file
-            elif 'title is empty' in parsed_paper_json_file:
-                title_empty_papers.append(parsed_paper_json_file)
-            elif 'abstract is empty' in parsed_paper_json_file:
-                abstract_empty_papers.append(parsed_paper_json_file)
-            elif 'introduction is empty' in parsed_paper_json_file:
-                introduction_empty_papers.append(parsed_paper_json_file)
-            elif 'conclusion is empty' in parsed_paper_json_file:
-                conclusion_empty_papers.append(parsed_paper_json_file)
-
-        paper_metadata_summary[
-            "2023_paper_parsed_jsons"] = parsed_2023_paper_json_files
-        paper_metadata_summary['2023_paper_parsed_jsons_count'] = len(
-            parsed_2023_paper_json_files)
-
-        paper_metadata_summary['2023_paper_title_empty'] = title_empty_papers
-        paper_metadata_summary['2023_paper_title_empty_count'] = len(
-            title_empty_papers)
-        paper_metadata_summary[
-            '2023_paper_abstract_empty'] = abstract_empty_papers
-        paper_metadata_summary['2023_paper_abstract_empty_count'] = len(
-            abstract_empty_papers)
-        paper_metadata_summary[
-            '2023_paper_introduction_empty'] = introduction_empty_papers
-        paper_metadata_summary['2023_paper_introduction_empty_count'] = len(
-            introduction_empty_papers)
-        paper_metadata_summary[
-            '2023_paper_conclusion_empty'] = conclusion_empty_papers
-        paper_metadata_summary['2023_paper_conclusion_empty_count'] = len(
-            conclusion_empty_papers)
-
-        # End the timer
-        end_time = time.time()
-        time_taken = end_time - start_time
-        confnavigator_logger.info(f"Parsing 2023 papers cost {time_taken} s")
-
-        utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
-    else:
-        paper_metadata_summary = utils.read_json_file(parsed_summary_file)
-
-    # Convert the csv file to json file
+def cross_check_paper_titles():
+    # Convert the csv file from the conference paper downloader to json file
     csv_file_path = './neurips2023_pdfs.csv'
     parsed_chapters_json_file_path = convert_arxiv_csv_to_json(csv_file_path)
 
-    # Cross check t
+    # Cross check if the downloaded PDF file matches the title from the paper downloder list
     trie = Trie()
-
     papers_list_from_arxiv_csv = utils.read_json_file(
         './neurips2023_pdfs.json')
 
@@ -674,7 +630,80 @@ if __name__ == '__main__':
 
     paper_metadata_summary["papers_matched"] = papers_match_csv
     paper_metadata_summary["papers_matched_count"] = len(papers_match_csv)
-    # TODO: Add unique id
-    # use the unique id as the key to save data.
 
+    return paper_metadata_summary
+
+
+def process_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--conference-paper-folder",
+        dest="conference_paper_folder",
+        required=False,
+        default=
+        "/import/snvm-sc-podscratch1/qingjianl2/nips_2023_conference_papers/neurips2023_pdf_0109",
+        help="The folder path of conference papers",
+    )
+
+    parser.add_argument(
+        "--test",
+        dest="test",
+        action='store_true',
+        required=False,
+        help="For testing purpose.",
+    )
+
+    parser.add_argument(
+        "--output-folder",
+        type=str,
+        dest="output_folder",
+        default=f"{os.curdir}",
+        help="The folder path for the output files.",
+    )
+
+    args = parser.parse_args()
+
+    return args
+
+
+if __name__ == "__main__":
+
+    args = process_args()
+
+    # To skip the paper filtering
+    skip_year_filtering = True
+    # To skip the paper parsing
+    skip_paper_parsing = True
+
+    # Load environmental variables from the .env file
+    load_dotenv()
+
+    paper_metadata_summary = {}
+    parsed_summary_file = f"{os.getcwd()}/paper_metadata_summary.json"
+
+    # Step 1: Paper cleaning - to remove papers that are not belonging to this conference
+    if not skip_year_filtering:
+        paper_metadata_summary = filter_papers_in_folder(
+            conference_paper_folder=args.conference_paper_folder)
+        utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
+    else:
+        paper_metadata_summary = utils.read_json_file(parsed_summary_file)
+
+    # Step 2: Paper parsing - parse the pdf into a json with different chapters
+    if not skip_paper_parsing:
+        # Start the timer for paper parsing
+        start_time = time.time()
+        paper_metadata_summary = parse_all_papers(paper_metadata_summary)
+        # End the timer for paper parsing
+        end_time = time.time()
+        time_taken = end_time - start_time
+        confnavigator_logger.info(f"Parsing 2023 papers cost {time_taken} s")
+
+        utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
+    else:
+        paper_metadata_summary = utils.read_json_file(parsed_summary_file)
+
+    # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
+    paper_metadata_summary = cross_check_paper_titles()
     utils.dump_json_file(paper_metadata_summary, parsed_summary_file)

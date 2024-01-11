@@ -51,6 +51,14 @@ def dump_json_file(data, json_file_path):
         json.dump(data, fp, indent=4)
 
 
+def can_be_int(s):
+    try:
+        int(s)  # Try to convert the string to an integer
+        return True  # Return True if successful
+    except ValueError:
+        return False  # Return False if a ValueError is raised
+
+
 class TrieNode:
     def __init__(self):
         self.children = {}
@@ -60,7 +68,7 @@ class TrieNode:
 class Trie:
     """
     Title extraction from the pdf file is a bit of tricky since there is no keyword to tell how many lines a title has or when to ends. the second line of the title might have one word or two words which makes it even tricker to distinguish it from the author line. So potentially, the first name of the first author might be appended to the extracted title.
-    Due to the limitation in the extracted title from the pdf as described above, the cross checking is to check if the prefix of the extracted title exists in the set which contains all titles from the arxiv csv
+    Due to the limitation in the extracted title from the pdf, the Trie is added to check if the prefix of the extracted title exists in the set which contains all titles from the arxiv csv
     """
     def __init__(self):
         self.root = TrieNode()

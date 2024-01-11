@@ -25,14 +25,18 @@ def create_prompt_based_on_paper_json_file(paper_json_file):
     return prompt
 
 
-# Function to make API calls for a chunk of prompts
-def process_prompts(paper_indexes, thread_id, papers_matched):
+def process_papers_chunk(paper_indexes, thread_id, papers_matched):
+    """
+    # Function to make API calls for a chunk of prompts
+    """
     openai_api_key = os.environ["OPENAI_API_KEY"]
     client = OpenAI(api_key=openai_api_key)
 
     for paper_index in paper_indexes:
         try:
             paper_json_file = papers_matched[paper_index]["json"]
+            if "summary" in papers_matched[paper_index]:
+                continue
             prompt = create_prompt_based_on_paper_json_file(paper_json_file)
             # Start the timer
             start_time = time.time()
@@ -60,12 +64,11 @@ def divide_chunks(lst, n):
 
 
 def call_openai_api_to_summarize_paper(
-        parsed_summary_file,
+        papers_matched,
+        output_folder_path: str = os.getcwd(),
         n_threads: int = 3,
         openai_model_type: str = "gpt-3.5-turbo-1106"):
-    paper_metadata_summary = utils.read_json_file(parsed_summary_file)
-    papers_matched = paper_metadata_summary["papers_matched"]
-    paper_indexes = list(sorted(papers_matched.keys()))[0:10]
+    paper_indexes = list(sorted(papers_matched.keys()))[0:11]
 
     confnavigator_logger.info(
         f"Going to call openai api for {len(paper_indexes)} papers")
@@ -86,10 +89,10 @@ def call_openai_api_to_summarize_paper(
     # Start the timer
     start_time = time.time()
 
-    if len(paper_indexes) > 10:
+    if len(paper_indexes) > 100:
         print("-------------" * 10)
         print(
-            f"It's going to run summary for {len(paper_indexes)} with {openai_model_type}, are you sure that you want to proceed? Press c for continue and press q to quit."
+            f"It's going to run summary for {len(paper_indexes)} with {openai_model_type}, are you sure that you want to proceed? Press 'c' for continue and press 'q' to quit."
         )
         print("-------------" * 10)
         breakpoint()
@@ -97,7 +100,7 @@ def call_openai_api_to_summarize_paper(
     # Creating and starting threads
     threads = []
     for i in range(n_threads):
-        thread = threading.Thread(target=process_prompts,
+        thread = threading.Thread(target=process_papers_chunk,
                                   args=(paper_indexes_chunks[i], i,
                                         papers_matched))
         threads.append(thread)
@@ -145,10 +148,8 @@ def call_openai_api_to_summarize_paper(
             traceback.print_exc()
             confnavigator_logger.info(f"Failed to parse file {paper_title}")
 
-    confnavigator_logger.info("All threads completed")
-
+    confnavigator_logger.info("All papers completed")
     total_cost = input_total_tokens * 0.001 / 2000 + output_total_tokens * 0.002 / 1000
-
     confnavigator_logger.info(
         f"Total input tokens is {input_total_tokens} and total output tokens is {output_total_tokens}. Total Cost is {total_cost}"
     )
@@ -156,9 +157,8 @@ def call_openai_api_to_summarize_paper(
     response_summary["output_total_tokens"] = input_total_tokens
     response_summary["total_cost"] = total_cost
 
-    output_folder_path = os.path.dirname(parsed_summary_file)
     summary_paper_json_file_path = os.path.join(
-        output_folder_path, f"Summary_selected_papers.json")
+        output_folder_path, f"summary_selected_papers.json")
     utils.dump_json_file(response_summary, summary_paper_json_file_path)
 
     return summary_paper_json_file_path
@@ -170,6 +170,14 @@ if __name__ == '__main__':
     assert "OPENAI_API_KEY" in os.environ, "OPENAI_API_KEY environment variable not found"
     assert "OPEN_AI_MODEL_TYPE" in os.environ, "OPEN_AI_MODEL_TYPE environment variable not found"
 
-    parsed_summary_file = f"{os.getcwd()}/paper_metadata_summary.json"
+    paper_metadata_file = f"{os.getcwd()}/paper_metadata_summary.json"
+    summary_file = f"{os.getcwd()}/summary_selected_papers.json"
+
+    if os.path.isfile(summary_file):
+        papers_matched = utils.read_json_file(summary_file)
+    else:
+        paper_metadata_summary = utils.read_json_file(paper_metadata_file)
+        papers_matched = paper_metadata_summary["papers_matched"]
+
     summary_paper_json_file_path = call_openai_api_to_summarize_paper(
-        parsed_summary_file)
+        papers_matched)
