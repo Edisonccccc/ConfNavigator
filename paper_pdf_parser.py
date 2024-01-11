@@ -17,10 +17,9 @@ from utils import CONCLUSION_TITLES, Trie
 from logger import confnavigator_logger
 
 
-# Paper cleaning - to remove papers that are not belonging to this conference
-# Paper parsing - parse the pdf into a json with different chapters
-# Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
-
+# Step 1: Paper cleaning - to remove papers that are not belonging to this conference
+# Step 2: Paper parsing - parse the pdf into a json with different chapters
+# Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
 
 def paper_parsing(paper_pdf_file, is_full_paper: bool = False):
 
@@ -512,7 +511,7 @@ def select_papers_based_on_year(paper_pdf_files):
 
 
 
-def convert_arxiv_csv_to_json(papers_in_2023, csv_file_path):
+def convert_arxiv_csv_to_json(csv_file_path):
 
     # Reading the CSV data into a DataFrame
     df = pd.read_csv(csv_file_path)
@@ -622,13 +621,13 @@ if __name__ == '__main__':
 
 
     # Convert the csv file to json file
-    # csv_file_path = '/import/snvm-sc-podscratch1/qingjianl2/nips/neurips2023_pdfs.csv'
-    # parsed_chapters_json_file_path = convert_arxiv_csv_to_json(papers_in_2023, csv_file_path)
+    csv_file_path = './neurips2023_pdfs.csv'
+    parsed_chapters_json_file_path = convert_arxiv_csv_to_json(csv_file_path)
 
     # Cross check t
     trie = Trie()
 
-    papers_list_from_arxiv_csv = utils.read_json_file('/import/snvm-sc-podscratch1/qingjianl2/nips/neurips2023_pdfs.json')
+    papers_list_from_arxiv_csv = utils.read_json_file('./neurips2023_pdfs.json')
     
 
     paper_metadata_dict = {}
@@ -643,20 +642,27 @@ if __name__ == '__main__':
     parsed_summary_file = f"{os.getcwd()}/paper_metadata_summary.json"
     paper_metadata_summary = utils.read_json_file(parsed_summary_file)
     papers_match_csv = {}
+    index = 0
     for parsed_json_file in paper_metadata_summary["2023_paper_parsed_jsons"]:
         parsed_paper_data = utils.read_json_file(parsed_json_file)
         paper_title = parsed_paper_data['Title']
         matched_title_from_csv = trie.search(paper_title)
         
         if matched_title_from_csv:
-            papers_match_csv[paper_title] = {}
-            papers_match_csv[paper_title]["json"] = parsed_json_file
-            papers_match_csv[paper_title]["metadata"] = paper_metadata_dict[matched_title_from_csv]
-            papers_match_csv[paper_title]["pdf"] = paper_metadata_summary["mapping_json_to_pdf"][parsed_json_file]
+            papers_match_csv[index] = {}
+            papers_match_csv[index]["paper_title"] = paper_title
+
+            papers_match_csv[index]["json"] = parsed_json_file
+            papers_match_csv[index]["metadata"] = paper_metadata_dict[matched_title_from_csv]
+            papers_match_csv[index]["pdf"] = paper_metadata_summary["mapping_json_to_pdf"][parsed_json_file]
+            index += 1
 
 
     paper_metadata_summary["papers_matched"] = papers_match_csv
     paper_metadata_summary["papers_matched_count"] = len(papers_match_csv)
+    # TODO: Add unique id
+    # use the unique id as the key to save data.
+    
 
     utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
 
