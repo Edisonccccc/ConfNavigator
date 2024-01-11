@@ -16,10 +16,10 @@ import utils as utils
 from utils import CONCLUSION_TITLES, Trie
 from logger import confnavigator_logger
 
-
 # Step 1: Paper cleaning - to remove papers that are not belonging to this conference
 # Step 2: Paper parsing - parse the pdf into a json with different chapters
 # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
+
 
 def paper_parsing(paper_pdf_file, is_full_paper: bool = False):
 
@@ -31,10 +31,10 @@ def paper_parsing(paper_pdf_file, is_full_paper: bool = False):
             paper_pdf.paper_parsing()
 
             # TODO: validate if the parsing file is valid like each chapter has content
-            assert paper_pdf.title.content != "",  f"{paper_pdf_file} - title is empty"
-            assert paper_pdf.abstract.content != "",  f"{paper_pdf_file} - abstract is empty"
-            assert paper_pdf.introduction.content != "",  f"{paper_pdf_file} - introduction is empty"
-            assert paper_pdf.conclusion.content != "",  f"{paper_pdf_file} - conclusion is empty"
+            assert paper_pdf.title.content != "", f"{paper_pdf_file} - title is empty"
+            assert paper_pdf.abstract.content != "", f"{paper_pdf_file} - abstract is empty"
+            assert paper_pdf.introduction.content != "", f"{paper_pdf_file} - introduction is empty"
+            assert paper_pdf.conclusion.content != "", f"{paper_pdf_file} - conclusion is empty"
 
             parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters()
 
@@ -43,7 +43,8 @@ def paper_parsing(paper_pdf_file, is_full_paper: bool = False):
         print(_e)
         traceback.print_exc()
         print(f"Failed to parse file {paper_pdf_file}")
-        confnavigator_logger.exception(f"Exception in parsing {paper_pdf_file}", _e)
+        confnavigator_logger.exception(
+            f"Exception in parsing {paper_pdf_file}", _e)
         confnavigator_logger.error(f"Failed to parse file {paper_pdf_file}")
 
         return str(_e)
@@ -58,18 +59,17 @@ def convert_full_pdf_to_text(pdf_file_path):
         page = document.load_page(page_num)  # zero-based index
         breakpoint()
         text += page.get_text()[:-4]
-    
 
     # Extract the file name with extension
     filename_with_extension = os.path.basename(pdf_file_path)
     # Split the file name from its extension
     filename_without_extension, _ = os.path.splitext(filename_with_extension)
     output_folder_path = os.path.dirname(pdf_file_path)
-    full_paper_json_file_path = os.path.join(output_folder_path, f"{filename_without_extension}_full_paper.json")
+    full_paper_json_file_path = os.path.join(
+        output_folder_path, f"{filename_without_extension}_full_paper.json")
 
     utils.dump_json_file(text, full_paper_json_file_path)
 
-    
     return full_paper_json_file_path
 
 
@@ -82,7 +82,6 @@ class PaperChapter(ABC):
     Conclusion Chapter
     References Chapter
     """
-
     def __init__(self):
         self.raw_text = ""
         self.page_numbers = []
@@ -121,10 +120,10 @@ class TitleChapter(PaperChapter):
     def chapter_parsing(self):
         self.chapter_index = self.extract_chapter_index()
         self.content, self.content_lines_list = self.create_content()
-    
+
     def extract_chapter_index(self):
         return -1
-    
+
     def create_content(self):
         """
         Assumption:
@@ -143,7 +142,7 @@ class TitleChapter(PaperChapter):
 
                 if "." in line:
                     break
-                
+
                 if "," in line:
                     break
 
@@ -171,11 +170,11 @@ class AbstractChapter(PaperChapter):
     def chapter_parsing(self):
         self.chapter_index = self.extract_chapter_index()
         self.content, self.content_lines_list = self.create_content()
-    
+
     def extract_chapter_index(self):
         # Define the index of the Abstract chapter is 0.
         return 0
-    
+
     def chapter_ending_criteria(self):
         return "\nIntroduction\n" in self.raw_text
 
@@ -189,17 +188,17 @@ class AbstractChapter(PaperChapter):
         for line in raw_text_in_lines:
             if "Abstract" in line or "ABSTRACT" in line:
                 is_in_abstract_chapter = True
-            
+
             if "Introduction" in line:
                 is_in_abstract_chapter = False
                 is_in_next_chapter = True
-            
+
             if is_in_next_chapter:
                 break
 
             if is_in_abstract_chapter:
                 abstract_content_lines_list.append(line)
-        
+
         content = " ".join(abstract_content_lines_list)
         content_lines_list = abstract_content_lines_list
 
@@ -210,10 +209,10 @@ class IntroductionChapter(PaperChapter):
     def __init__(self):
         super().__init__()
         self.chapter_index = self.extract_chapter_index()
-    
+
     def chapter_parsing(self):
         self.content, self.content_lines_list = self.create_content()
-    
+
     def extract_chapter_index(self):
         # Define the index of the Introduction chapter is 0.
         return 1
@@ -226,7 +225,7 @@ class IntroductionChapter(PaperChapter):
         for line in raw_text_in_lines:
             if "Introduction" in line:
                 is_in_introduction_chapter = True
-            
+
             if f"{self.chapter_index + 1}" == line:
                 is_in_next_chapter = True
 
@@ -239,7 +238,7 @@ class IntroductionChapter(PaperChapter):
 
             if is_in_introduction_chapter:
                 introduction_content_lines_list.append(line)
-        
+
         content = " ".join(introduction_content_lines_list)
         content_lines_list = introduction_content_lines_list
 
@@ -250,24 +249,23 @@ class ConclusionChapter(PaperChapter):
     def __init__(self):
         super().__init__()
 
-    
     def chapter_parsing(self):
 
         self.chapter_index = self.extract_chapter_index()
         self.content, self.content_lines_list = self.create_content()
-    
+
     def extract_chapter_index(self):
         raw_text_in_lines = self.raw_text.split("\n")
 
         for i, line in enumerate(raw_text_in_lines):
             if "Conclusion" in line:
-                # \n5\nConclusion\n 
+                # \n5\nConclusion\n
 
                 if can_be_int(raw_text_in_lines[i - 1]):
                     return int(raw_text_in_lines[i - 1])
-            
+
         return -1
-    
+
     def create_content(self):
         raw_text_in_lines = self.raw_text.split("\n")
         conclusion_content_lines_list = []
@@ -278,17 +276,17 @@ class ConclusionChapter(PaperChapter):
         for line in raw_text_in_lines:
             if line in CONCLUSION_TITLES:
                 is_in_conclusion_chapter = True
-            
+
             if "References" in line:
                 is_in_conclusion_chapter = False
                 is_in_next_chapter = True
-            
+
             if is_in_next_chapter:
                 break
 
             if is_in_conclusion_chapter:
                 conclusion_content_lines_list.append(line)
-        
+
         content = " ".join(conclusion_content_lines_list)
         content_lines_list = conclusion_content_lines_list
 
@@ -302,11 +300,11 @@ class ReferencesChapter(PaperChapter):
     def chapter_parsing(self):
         self.chapter_index = self.extract_chapter_index()
         self.content, self.content_lines_list = self.create_content()
-    
-    def extract_chapter_index(self): 
+
+    def extract_chapter_index(self):
         # Reference chapter usually don't have chapter index.
         return -1
-    
+
     def create_content(self):
         raw_text_in_lines = self.raw_text.split("\n")
         references_content_lines_list = []
@@ -317,18 +315,18 @@ class ReferencesChapter(PaperChapter):
         for line in raw_text_in_lines:
             if "References" in line:
                 is_in_reference_chapter = True
-            
+
             # pattern = r"^\[\d+\]"
             # if not re.match(pattern, line):
             #     is_in_next_chapter = True
             #     is_in_reference_chapter = False
-            
+
             # if is_in_next_chapter:
             #     break
 
             if is_in_reference_chapter:
                 references_content_lines_list.append(line)
-        
+
         content = " ".join(references_content_lines_list)
         content_lines_list = references_content_lines_list
 
@@ -337,7 +335,9 @@ class ReferencesChapter(PaperChapter):
 
 class PaperPDF():
     def __init__(self, pdf_file_path: str):
-        assert os.path.isfile(pdf_file_path), f"Error: The provided {pdf_file_path} is not valid!"
+        assert os.path.isfile(
+            pdf_file_path
+        ), f"Error: The provided {pdf_file_path} is not valid!"
 
         self.pdf_file_path = pdf_file_path
         self.title = TitleChapter()
@@ -345,7 +345,6 @@ class PaperPDF():
         self.introduction = IntroductionChapter()
         self.conclusion = ConclusionChapter()
         self.references = ReferencesChapter()
-        
 
     def paper_parsing(self):
         document = fitz.open(self.pdf_file_path)
@@ -365,7 +364,6 @@ class PaperPDF():
             if "\nAbstract\n" in page_text or "\nABSTRACT\n" in page_text:
                 self.title.append_page(page_text, page_index)
 
-
             if "\nAbstract\n" in page_text or "\nABSTRACT\n" in page_text:
                 is_in_abstract_chapter = True
 
@@ -374,14 +372,14 @@ class PaperPDF():
                     if "\nIntroduction\n" in page_text:
                         is_in_abstract_chapter = False
                         break
-                    
+
                     page_index += 1
                     if page_index == len(document):
                         break
 
                     page = document.load_page(page_index)  # zero-based index
                     page_text = page.get_text()
-            
+
             if "\nIntroduction\n" in page_text:
                 is_in_introduction_chapter = True
 
@@ -390,13 +388,13 @@ class PaperPDF():
                     if "2\n" in page_text[:-4]:
                         is_in_introduction_chapter = False
                         break
-                    
+
                     page_index += 1
                     if page_index == len(document):
                         break
                     page = document.load_page(page_index)  # zero-based index
                     page_text = page.get_text()
-            
+
             if self.check_if_conclusion_title_in_page_text(page_text):
                 is_in_conclusion_chapter = True
 
@@ -405,25 +403,26 @@ class PaperPDF():
                     if "References\n" in page_text:
                         is_in_conclusion_chapter = False
                         break
-                    
+
                     page_index += 1
                     if page_index == len(document):
                         break
                     page = document.load_page(page_index)  # zero-based index
                     page_text = page.get_text()
-            
-            
+
             if "References\n" in page_text:
                 is_in_reference_chapter = True
 
                 while is_in_reference_chapter:
                     page_lines = page_text.split("\n")
-                    if "References\n" not in page_text and page_lines[0] != "References" and not page_lines[0].startswith("["):
+                    if "References\n" not in page_text and page_lines[
+                            0] != "References" and not page_lines[
+                                0].startswith("["):
                         is_in_reference_chapter = False
                         break
                     else:
                         self.references.append_page(page_text, page_index)
-                    
+
                     page_index += 1
                     if page_index == len(document):
                         break
@@ -438,13 +437,11 @@ class PaperPDF():
         self.conclusion.chapter_parsing()
         self.references.chapter_parsing()
 
-    
     def check_if_conclusion_title_in_page_text(self, page_text):
         for conclusion_title in CONCLUSION_TITLES:
             if f"\n{conclusion_title}\n" in page_text:
                 return True
         return False
-
 
     def dump_parsed_chapters(self, output_folder_path: str = ""):
 
@@ -452,11 +449,14 @@ class PaperPDF():
         filename_with_extension = os.path.basename(self.pdf_file_path)
 
         # Split the file name from its extension
-        filename_without_extension, _ = os.path.splitext(filename_with_extension)
+        filename_without_extension, _ = os.path.splitext(
+            filename_with_extension)
 
         if output_folder_path == "":
             output_folder_path = os.path.dirname(self.pdf_file_path)
-        parsed_chapters_json_file_path = os.path.join(output_folder_path, f"{filename_without_extension}_parsed_chapters.json")
+        parsed_chapters_json_file_path = os.path.join(
+            output_folder_path,
+            f"{filename_without_extension}_parsed_chapters.json")
 
         chapters_content = {
             "Title": self.title.print_chapter(),
@@ -470,7 +470,6 @@ class PaperPDF():
         with open(parsed_chapters_json_file_path, 'w') as file:
             json.dump(chapters_content, file, indent=4)
 
-        
         return parsed_chapters_json_file_path
 
 
@@ -486,7 +485,10 @@ def find_all_pdf_files_in_folder(folder_path):
     # List all the files in the directory
     all_files = os.listdir(folder_path)
     # Filter out the files that are not PDFs
-    pdf_files = [os.path.join(folder_path, file) for file in all_files if file.lower().endswith('.pdf')]
+    pdf_files = [
+        os.path.join(folder_path, file) for file in all_files
+        if file.lower().endswith('.pdf')
+    ]
 
     return pdf_files
 
@@ -506,9 +508,8 @@ def select_papers_based_on_year(paper_pdf_files):
             papers_in_2023.append(paper_pdf_file)
         else:
             papers_not_in_2023.append(paper_pdf_file)
-    
-    return papers_in_2023, papers_not_in_2023
 
+    return papers_in_2023, papers_not_in_2023
 
 
 def convert_arxiv_csv_to_json(csv_file_path):
@@ -523,11 +524,11 @@ def convert_arxiv_csv_to_json(csv_file_path):
     filename_with_extension = os.path.basename(csv_file_path)
     # Split the file name from its extension
     filename_without_extension, _ = os.path.splitext(filename_with_extension)
-    arxiv_json_file = os.path.join(os.path.dirname(csv_file_path), f"{filename_without_extension}.json")
+    arxiv_json_file = os.path.join(os.path.dirname(csv_file_path),
+                                   f"{filename_without_extension}.json")
     utils.dump_json_file(data=json_data, json_file_path=arxiv_json_file)
 
     return arxiv_json_file
-
 
 
 if __name__ == '__main__':
@@ -550,11 +551,13 @@ if __name__ == '__main__':
 
         paper_pdf_files = find_all_pdf_files_in_folder(folder_path=folder_path)
         # Select papers that were published in 2023.
-        papers_in_2023, papers_not_in_2023 = select_papers_based_on_year(paper_pdf_files)
+        papers_in_2023, papers_not_in_2023 = select_papers_based_on_year(
+            paper_pdf_files)
         paper_metadata_summary["papers_in_2023"] = papers_in_2023
         paper_metadata_summary["papers_not_in_2023"] = papers_not_in_2023
         paper_metadata_summary["papers_in_2023_count"] = len(papers_in_2023)
-        paper_metadata_summary["papers_not_in_2023_count"] = len(papers_not_in_2023)
+        paper_metadata_summary["papers_not_in_2023_count"] = len(
+            papers_not_in_2023)
 
         # End the timer
         end_time = time.time()
@@ -565,17 +568,15 @@ if __name__ == '__main__':
     else:
         paper_metadata_summary = utils.read_json_file(parsed_summary_file)
 
-
     if not skip_paper_parsing:
 
         # Start the timer
         start_time = time.time()
 
-
         paper_metadata_summary["mapping_pdf_to_json"] = {}
         paper_metadata_summary["mapping_json_to_pdf"] = {}
         parsed_2023_paper_json_files = []
-        
+
         title_empty_papers = []
         abstract_empty_papers = []
         introduction_empty_papers = []
@@ -586,8 +587,10 @@ if __name__ == '__main__':
             parsed_paper_json_file = paper_parsing(paper_pdf_file)
             if os.path.isfile(parsed_paper_json_file):
                 parsed_2023_paper_json_files.append(parsed_paper_json_file)
-                paper_metadata_summary["mapping_pdf_to_json"][paper_pdf_file] = parsed_paper_json_file
-                paper_metadata_summary["mapping_json_to_pdf"][parsed_paper_json_file] = paper_pdf_file
+                paper_metadata_summary["mapping_pdf_to_json"][
+                    paper_pdf_file] = parsed_paper_json_file
+                paper_metadata_summary["mapping_json_to_pdf"][
+                    parsed_paper_json_file] = paper_pdf_file
             elif 'title is empty' in parsed_paper_json_file:
                 title_empty_papers.append(parsed_paper_json_file)
             elif 'abstract is empty' in parsed_paper_json_file:
@@ -597,28 +600,35 @@ if __name__ == '__main__':
             elif 'conclusion is empty' in parsed_paper_json_file:
                 conclusion_empty_papers.append(parsed_paper_json_file)
 
-        paper_metadata_summary["2023_paper_parsed_jsons"] = parsed_2023_paper_json_files
-        paper_metadata_summary['2023_paper_parsed_jsons_count'] = len(parsed_2023_paper_json_files)
+        paper_metadata_summary[
+            "2023_paper_parsed_jsons"] = parsed_2023_paper_json_files
+        paper_metadata_summary['2023_paper_parsed_jsons_count'] = len(
+            parsed_2023_paper_json_files)
 
         paper_metadata_summary['2023_paper_title_empty'] = title_empty_papers
-        paper_metadata_summary['2023_paper_title_empty_count'] = len(title_empty_papers)
-        paper_metadata_summary['2023_paper_abstract_empty'] = abstract_empty_papers
-        paper_metadata_summary['2023_paper_abstract_empty_count'] = len(abstract_empty_papers)
-        paper_metadata_summary['2023_paper_introduction_empty'] = introduction_empty_papers
-        paper_metadata_summary['2023_paper_introduction_empty_count'] = len(introduction_empty_papers)
-        paper_metadata_summary['2023_paper_conclusion_empty'] = conclusion_empty_papers
-        paper_metadata_summary['2023_paper_conclusion_empty_count'] = len(conclusion_empty_papers)
+        paper_metadata_summary['2023_paper_title_empty_count'] = len(
+            title_empty_papers)
+        paper_metadata_summary[
+            '2023_paper_abstract_empty'] = abstract_empty_papers
+        paper_metadata_summary['2023_paper_abstract_empty_count'] = len(
+            abstract_empty_papers)
+        paper_metadata_summary[
+            '2023_paper_introduction_empty'] = introduction_empty_papers
+        paper_metadata_summary['2023_paper_introduction_empty_count'] = len(
+            introduction_empty_papers)
+        paper_metadata_summary[
+            '2023_paper_conclusion_empty'] = conclusion_empty_papers
+        paper_metadata_summary['2023_paper_conclusion_empty_count'] = len(
+            conclusion_empty_papers)
 
         # End the timer
         end_time = time.time()
         time_taken = end_time - start_time
         confnavigator_logger.info(f"Parsing 2023 papers cost {time_taken} s")
 
-    
         utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
     else:
         paper_metadata_summary = utils.read_json_file(parsed_summary_file)
-
 
     # Convert the csv file to json file
     csv_file_path = './neurips2023_pdfs.csv'
@@ -627,14 +637,17 @@ if __name__ == '__main__':
     # Cross check t
     trie = Trie()
 
-    papers_list_from_arxiv_csv = utils.read_json_file('./neurips2023_pdfs.json')
-    
+    papers_list_from_arxiv_csv = utils.read_json_file(
+        './neurips2023_pdfs.json')
 
     paper_metadata_dict = {}
     for paper_metadata in papers_list_from_arxiv_csv:
         paper_metadata_dict[paper_metadata['title']] = paper_metadata
 
-    titles_from_arxiv = [paper_metadata['title'] for paper_metadata in papers_list_from_arxiv_csv]
+    titles_from_arxiv = [
+        paper_metadata['title']
+        for paper_metadata in papers_list_from_arxiv_csv
+    ]
 
     for title in titles_from_arxiv:
         trie.insert(title)
@@ -647,27 +660,21 @@ if __name__ == '__main__':
         parsed_paper_data = utils.read_json_file(parsed_json_file)
         paper_title = parsed_paper_data['Title']
         matched_title_from_csv = trie.search(paper_title)
-        
+
         if matched_title_from_csv:
             papers_match_csv[index] = {}
             papers_match_csv[index]["paper_title"] = paper_title
 
             papers_match_csv[index]["json"] = parsed_json_file
-            papers_match_csv[index]["metadata"] = paper_metadata_dict[matched_title_from_csv]
-            papers_match_csv[index]["pdf"] = paper_metadata_summary["mapping_json_to_pdf"][parsed_json_file]
+            papers_match_csv[index]["metadata"] = paper_metadata_dict[
+                matched_title_from_csv]
+            papers_match_csv[index]["pdf"] = paper_metadata_summary[
+                "mapping_json_to_pdf"][parsed_json_file]
             index += 1
-
 
     paper_metadata_summary["papers_matched"] = papers_match_csv
     paper_metadata_summary["papers_matched_count"] = len(papers_match_csv)
     # TODO: Add unique id
     # use the unique id as the key to save data.
-    
 
     utils.dump_json_file(paper_metadata_summary, parsed_summary_file)
-
-
-   
-
-
-

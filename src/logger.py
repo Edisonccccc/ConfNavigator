@@ -16,5 +16,3 @@ log_file_format = logging.Formatter(logging_format_str)
 file_handler.setFormatter(log_file_format)
 
 confnavigator_logger.addHandler(file_handler)
-
-

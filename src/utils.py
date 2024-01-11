@@ -1,73 +1,39 @@
 import json
 import os
 
-
 CONCLUSION_TITLES = [
-    "Conclusions", 
-    "Conclusion", 
-    "CONCLUSION"
-    "Conclusions and Future Work", 
-    "Conclusion and Future Work", 
-    "Conclusion and limitation", 
-    "Discussion and Limitations", 
-    "Conclusion and future work", 
-    "Summary", 
-    "Discussion", 
-    "Conclusion, Limitations, and Border Impacts", 
-    "Limitations and Future Directions", 
-    "Conclusion and Discussion", 
-    "Concluding Remarks", 
-    "Conclusions and Limitations", 
-    "Future Work", 
+    "Conclusions", "Conclusion", "CONCLUSION"
+    "Conclusions and Future Work", "Conclusion and Future Work",
+    "Conclusion and limitation", "Discussion and Limitations",
+    "Conclusion and future work", "Summary", "Discussion",
+    "Conclusion, Limitations, and Border Impacts",
+    "Limitations and Future Directions", "Conclusion and Discussion",
+    "Concluding Remarks", "Conclusions and Limitations", "Future Work",
     "Conclusion, Discussion and Limitations",
-    "Related Work Beyond Active Learning",
-    "Numerical demonstrations",
-    "Discussion and Future Directions",
-    "Perspectives",
+    "Related Work Beyond Active Learning", "Numerical demonstrations",
+    "Discussion and Future Directions", "Perspectives",
     "Conclusion, Limitations and Future Directions",
-    "Discussion and Conclusion",
-    "Limitations and Future Work",
-    "Conclusions and future work",
-    "Discussion and future directions", 
-    "Summary and Discussion",
-    "Discussion and Conclusion",
-    "Limitations",
-    "Limitations and Conclusions",
-    "Numerical experiments",
-    "Discussion & Conclusion",
-    "Discussions, Limitations and Future Work",
-    "Limitations and Conclusion",
-    "Conclusion and limitations",
-    "Concluding remarks",
-    "Discussions",
-    "Conclusion and Limitation",
-    "Discussion and Future Work",
-    "Experiments",
-    "Related work",
-    "CONCLUDING REMARK",
-    "Conclusion Remarks",
-    "Experimental Evaluation",
-    "Conclusion and Limitations",
-    "Conclusions and Future Work",
-    "Discussion, Limitations and Future Work",
-    "Conclusions and Discussions",
-    "Conclusion and open problems",
-    "Discussion and future work",
-    "Further applications",
-    "Future work",
-    "Conclusion, Limitations, and Future Work",
-    "Conclusions and Future Work",
+    "Discussion and Conclusion", "Limitations and Future Work",
+    "Conclusions and future work", "Discussion and future directions",
+    "Summary and Discussion", "Discussion and Conclusion", "Limitations",
+    "Limitations and Conclusions", "Numerical experiments",
+    "Discussion & Conclusion", "Discussions, Limitations and Future Work",
+    "Limitations and Conclusion", "Conclusion and limitations",
+    "Concluding remarks", "Discussions", "Conclusion and Limitation",
+    "Discussion and Future Work", "Experiments", "Related work",
+    "CONCLUDING REMARK", "Conclusion Remarks", "Experimental Evaluation",
+    "Conclusion and Limitations", "Conclusions and Future Work",
+    "Discussion, Limitations and Future Work", "Conclusions and Discussions",
+    "Conclusion and open problems", "Discussion and future work",
+    "Further applications", "Future work",
+    "Conclusion, Limitations, and Future Work", "Conclusions and Future Work",
     "Building a polynomial-time approximate oracle",
-    "Limitations and future work",
-    "Discussion and limitations",
+    "Limitations and future work", "Discussion and limitations",
     "Conclusion, Future Work and Limitations",
-    "Further discussion and conclusion",
-    "Open directions",
-    "Technical Overview",
-    "Conclusion and Future Directions",
-    "Related Work and Conclusion",
-    "Discussion: Extensions and Limitations"
-    ]
+    "Further discussion and conclusion", "Open directions",
+    "Technical Overview", "Conclusion and Future Directions",
+    "Related Work and Conclusion", "Discussion: Extensions and Limitations"
+]
 
 
 def read_json_file(json_file_path: str):
@@ -80,18 +46,16 @@ def read_json_file(json_file_path: str):
         return None
 
 
-
 def dump_json_file(data, json_file_path):
     with open(json_file_path, 'w') as fp:
         json.dump(data, fp, indent=4)
-
-
 
 
 class TrieNode:
     def __init__(self):
         self.children = {}
         self.isEndOfWord = False
+
 
 class Trie:
     """
