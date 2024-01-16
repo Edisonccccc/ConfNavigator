@@ -36,6 +36,7 @@ def process_papers_chunk(paper_indexes, thread_id, papers_matched):
         try:
             paper_json_file = papers_matched[paper_index]["json"]
             if "summary" in papers_matched[paper_index]:
+                print(f"Paper {paper_index} has been processed.")
                 continue
             prompt = create_prompt_based_on_paper_json_file(paper_json_file)
             # Start the timer
@@ -51,10 +52,13 @@ def process_papers_chunk(paper_indexes, thread_id, papers_matched):
             time_taken = end_time - start_time
             confnavigator_logger.info(
                 f"Took {time_taken} s to process paper - {paper_index}")
+            
+            time.sleep(20)
 
             response_queue.put((thread_id, prompt, paper_index, response))
         except Exception as e:
-            response_queue.put((thread_id, prompt, f"Error - {e}"))
+            confnavigator_logger.info(f"{thread_id} - paper {paper_index} run into errors: {e}")
+
 
 
 def divide_chunks(lst, n):
@@ -66,9 +70,14 @@ def divide_chunks(lst, n):
 def call_openai_api_to_summarize_paper(
         papers_matched,
         output_folder_path: str = os.getcwd(),
-        n_threads: int = 3,
+        n_threads: int = 5,
         openai_model_type: str = "gpt-3.5-turbo-1106"):
-    paper_indexes = list(sorted(papers_matched.keys()))[0:11]
+    paper_indexes = list(papers_matched.keys())
+    paper_indexes = []
+    for paper_index, paper_data in papers_matched.items():
+        if type(paper_data) is dict and "summary" not in paper_data:
+            paper_indexes.append(paper_index)
+
 
     confnavigator_logger.info(
         f"Going to call openai api for {len(paper_indexes)} papers")
@@ -146,16 +155,15 @@ def call_openai_api_to_summarize_paper(
         except Exception as _e:
             confnavigator_logger.info(_e)
             traceback.print_exc()
-            confnavigator_logger.info(f"Failed to parse file {paper_title}")
 
     confnavigator_logger.info("All papers completed")
     total_cost = input_total_tokens * 0.001 / 2000 + output_total_tokens * 0.002 / 1000
     confnavigator_logger.info(
         f"Total input tokens is {input_total_tokens} and total output tokens is {output_total_tokens}. Total Cost is {total_cost}"
     )
-    response_summary["input_total_tokens"] = input_total_tokens
-    response_summary["output_total_tokens"] = input_total_tokens
-    response_summary["total_cost"] = total_cost
+    # response_summary["input_total_tokens"] = input_total_tokens
+    # response_summary["output_total_tokens"] = input_total_tokens
+    # response_summary["total_cost"] = total_cost
 
     summary_paper_json_file_path = os.path.join(
         output_folder_path, f"summary_selected_papers.json")
