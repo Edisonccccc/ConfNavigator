@@ -11,14 +11,27 @@ import time
 from logger import confnavigator_logger
 import math
 import traceback
-
+import argparse
+import copy
 # Queue to store responses
 response_queue = queue.Queue()
 
 
 def create_prompt_based_on_paper_json_file(paper_json_file):
     paper_parsed_data = utils.read_json_file(paper_json_file)
-    paper_content = f"{paper_parsed_data.get('Abstract', '')} \n {paper_parsed_data.get('Introduction', '')} \n {paper_parsed_data.get('Conclusion', '')} \n"
+    if paper_parsed_data == None:
+        return ""
+    if "fullpage" in paper_parsed_data:
+        paper_content = paper_parsed_data.get("fullpage", "")
+    else:
+        paper_content = f"{paper_parsed_data.get('Abstract', '')} \n {paper_parsed_data.get('Introduction', '')} \n {paper_parsed_data.get('Conclusion', '')} \n"
+
+
+    
+    len(openai.Completion.create(prompt=paper_content, model="gpt-3.5-turbo-1106", max_tokens=0)["usage"]["total_tokens"])
+
+    
+    
     prompt = f"Summarize the text delimited by triple backticks in the following points: 1. summarize the main focus, 2. provide the main challenges, 3. provide the solutions and main novelties, 4. provide the results, 5. summarize keywords, 6. provide future research suggestions, 7. other information. ```{paper_content}```"
     #TODO: Add reference info to the prompt to ask for the most relevant references.
 
@@ -34,10 +47,14 @@ def process_papers_chunk(paper_indexes, thread_id, papers_matched):
 
     for paper_index in paper_indexes:
         try:
-            paper_json_file = papers_matched[paper_index]["json"]
+
             if "summary" in papers_matched[paper_index]:
                 print(f"Paper {paper_index} has been processed.")
                 continue
+            
+            if "parsed_json_file" not in papers_matched[paper_index] or papers_matched[paper_index]["parsed_json_file"] == None or not os.path.isfile(papers_matched[paper_index]["parsed_json_file"]):
+                continue
+            paper_json_file = papers_matched[paper_index]["parsed_json_file"]
             prompt = create_prompt_based_on_paper_json_file(paper_json_file)
             # Start the timer
             start_time = time.time()
@@ -68,13 +85,13 @@ def divide_chunks(lst, n):
 
 
 def call_openai_api_to_summarize_paper(
-        papers_matched,
+        paper_metadata_summary,
         output_folder_path: str = os.getcwd(),
         n_threads: int = 5,
         openai_model_type: str = "gpt-3.5-turbo-1106"):
-    paper_indexes = list(papers_matched.keys())
+    paper_indexes = list(paper_metadata_summary.keys())
     paper_indexes = []
-    for paper_index, paper_data in papers_matched.items():
+    for paper_index, paper_data in paper_metadata_summary.items():
         if type(paper_data) is dict and "summary" not in paper_data:
             paper_indexes.append(paper_index)
 
@@ -111,7 +128,7 @@ def call_openai_api_to_summarize_paper(
     for i in range(n_threads):
         thread = threading.Thread(target=process_papers_chunk,
                                   args=(paper_indexes_chunks[i], i,
-                                        papers_matched))
+                                        paper_metadata_summary))
         threads.append(thread)
         thread.start()
 
@@ -132,26 +149,26 @@ def call_openai_api_to_summarize_paper(
     output_total_tokens = 0
     # Retrieving responses from the queue
 
-    response_summary = papers_matched
+    response_summary = copy.deepcopy(paper_metadata_summary)
     while not response_queue.empty():
         try:
-            thread_id, prompt, paper_title, response = response_queue.get()
+            thread_id, prompt, paper_index, response = response_queue.get()
             summary = response.choices[0].message.content.strip()
-            # confnavigator_logger.info(f"{paper_title}: {summary}")
-            response_summary[paper_title]["summary"] = summary
-            response_summary[paper_title]["response"] = str(response)
-            response_summary[paper_title]["prompt"] = prompt
-            response_summary[paper_title][
+            # confnavigator_logger.info(f"{paper_index}: {summary}")
+            response_summary[paper_index]["summary"] = summary
+            response_summary[paper_index]["response"] = str(response)
+            response_summary[paper_index]["prompt"] = prompt
+            response_summary[paper_index][
                 "prompt_tokens"] = response.usage.prompt_tokens
             input_total_tokens += math.ceil(
                 response.usage.prompt_tokens / 1000) * 1000
-            response_summary[paper_title][
+            response_summary[paper_index][
                 "completion_tokens"] = response.usage.completion_tokens
             output_total_tokens += math.ceil(
                 response.usage.completion_tokens / 1000) * 1000
-            response_summary[paper_title][
+            response_summary[paper_index][
                 "total_tokens"] = response.usage.total_tokens
-            response_summary[paper_title]["thread_id"] = thread_id
+            response_summary[paper_index]["thread_id"] = thread_id
         except Exception as _e:
             confnavigator_logger.info(_e)
             traceback.print_exc()
@@ -172,20 +189,36 @@ def call_openai_api_to_summarize_paper(
     return summary_paper_json_file_path
 
 
+def process_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--output-folder",
+        type=str,
+        dest="output_folder",
+        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs",
+        help="The folder path for the output files.",
+    )
+
+    args = parser.parse_args()
+
+    return args
+
+
+
 if __name__ == '__main__':
+
+    args = process_args()
+
     # Load environmental variables from the .env file
     load_dotenv()
     assert "OPENAI_API_KEY" in os.environ, "OPENAI_API_KEY environment variable not found"
     assert "OPEN_AI_MODEL_TYPE" in os.environ, "OPEN_AI_MODEL_TYPE environment variable not found"
 
-    paper_metadata_file = f"{os.getcwd()}/paper_metadata_summary.json"
-    summary_file = f"{os.getcwd()}/summary_selected_papers.json"
+    summary_file = f"{args.output_folder}/papers_after_summary.json"
 
     if os.path.isfile(summary_file):
-        papers_matched = utils.read_json_file(summary_file)
-    else:
-        paper_metadata_summary = utils.read_json_file(paper_metadata_file)
-        papers_matched = paper_metadata_summary["papers_matched"]
+        paper_metadata_summary = utils.read_json_file(summary_file)
 
     summary_paper_json_file_path = call_openai_api_to_summarize_paper(
-        papers_matched)
+        paper_metadata_summary)

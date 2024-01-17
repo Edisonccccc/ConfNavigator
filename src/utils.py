@@ -32,7 +32,8 @@ CONCLUSION_TITLES = [
     "Conclusion, Future Work and Limitations",
     "Further discussion and conclusion", "Open directions",
     "Technical Overview", "Conclusion and Future Directions",
-    "Related Work and Conclusion", "Discussion: Extensions and Limitations"
+    "Related Work and Conclusion", "Discussion: Extensions and Limitations",
+    "Discussions and Future Work"
 ]
 
 
@@ -92,3 +93,16 @@ class Trie:
             if node.isEndOfWord:
                 return prefix
         return None
+
+
+def find_all_pdf_files_in_folder(folder_path):
+    # List all the files in the directory
+    all_files = os.listdir(folder_path)
+    # Filter out the files that are not PDFs
+    pdf_files = [
+        os.path.join(folder_path, file) for file in all_files
+        if file.lower().endswith('.pdf')
+    ]
+
+    return pdf_files
+
