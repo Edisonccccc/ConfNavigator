@@ -98,7 +98,7 @@ def process_args():
         "--output-folder",
         type=str,
         dest="output_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21",
+        default=f"***",
         help="The folder path for the output files.",
     )
 
@@ -155,18 +155,6 @@ def paper_pdf_cleaning(arxiv_paper_pdf_folder, openreview_paper_pdf_folder, csv_
             valid_openview_pdf += 1
         else:
             paper_data["openreview_pdf_path"] = ""
-        
-
-        # if paper_data["arxiv_pdf_path"] and filter_paper_by_year(arxiv_pdf_file_path):
-        #     paper_data["arxiv_pdf_in_2023"] = True
-        # else:
-        #     paper_data["arxiv_pdf_in_2023"] = False
-
-        # if paper_data["openreview_pdf_path"] and filter_paper_by_year(openreview_pdf_file_path):
-        #     paper_data["openreview_pdf_in_2023"] = True
-        # else:
-        #     paper_data["openreview_pdf_in_2023"] = False
-        
 
         pdf_file_to_parse = os.path.join(combined_paper_pdf_folder, f'{correct_title}.pdf')
         if paper_data["arxiv_pdf_path"]:
@@ -200,24 +188,6 @@ def paper_pdf_cleaning(arxiv_paper_pdf_folder, openreview_paper_pdf_folder, csv_
 
     utils.dump_json_file(papers_overview, paper_overview_file)
 
-    
-
-
-if __name__ == "__main__":
-    args = process_args()
-
-    arxiv_paper_pdf_folder = '/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/arxiv_papers'
-    openreview_paper_pdf_folder = '/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/openreview_pdf'
-    csv_file_path = '/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21/nips2023_new.csv'
-    combined_paper_pdf_folder = "/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/combined_papers"
-
-
-
-
-    
-    
-
-        
 
 
 

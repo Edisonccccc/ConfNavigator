@@ -263,7 +263,7 @@ def process_args():
         "--output-folder",
         type=str,
         dest="output_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21",
+        default=f"***",
         help="The folder path for the output files.",
     )
 

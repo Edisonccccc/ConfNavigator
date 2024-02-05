@@ -60,11 +60,11 @@ if __name__ == "__main__":
     # Load environmental variables from the .env file
     load_dotenv()
 
-    combined_paper_pdf_folder = "/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/combined_papers"
+    combined_paper_pdf_folder = "***"
 
-    do_cleaning_paper = False
-    do_parsing_paper = False
-    do_summarizing_paper = False
+    do_cleaning_paper = True
+    do_parsing_paper = True
+    do_summarizing_paper = True
     do_categorizing_paper = True
 
 
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         # Paper cleaning
         paper_pdf_cleaning(
             arxiv_paper_pdf_folder=args.arxiv_pdf_folder,
-            openreview_paper_pdf_folder=args.openreview_pdf_folder, csv_file_path=args.nips_csv, combined_paper_pdf_folder=combined_paper_pdf_folder, 
+            openreview_paper_pdf_folder=args.openreview_pdf_folder, csv_file_path=args.nips_csv, combined_paper_pdf_folder=combined_paper_pdf_folder,
             output_folder=args.output_folder
             )
     

@@ -60,9 +60,6 @@ def process_papers_chunk(papers_chunk, thread_id, openai_model_type):
 
     for paper_data in papers_chunk:
         try:
-            # if "Keywords_GPT3.5" in paper_data and paper_data["Keywords_GPT3.5_filtered"] != "UNKNOWN":
-            #     print(f"Paper {paper_data['id']} has been processed.")
-            #     continue
             
             prompt = create_categorize_prompt_based_on_abstract(paper_data)
 
@@ -155,9 +152,6 @@ def process_queue(categorized_papers_to_record, gpt_keywords_tmp_file):
             except Exception as _e:
                 confnavigator_logger.info(_e)
                 traceback.print_exc()
-                # You can also add logic to break the loop if certain conditions are met
-                # For example, if a specific 'end' signal is put in the queue by main thread
-
 
 
 def call_openai_api_to_categorize_paper(
@@ -183,19 +177,12 @@ def call_openai_api_to_categorize_paper(
         elif gpt_keywords_info[paper_index].get("Keywords_GPT3.5_filtered", "") in ["", "UNKNOWN"]:
             papers_to_categorize.append(paper_data)
             categorized_papers_to_record_tmp[paper_index] = paper_data
-        #  and paper_index not in gpt_keywords_info and paper_index not in skip_paper_index:
-        #     papers_to_categorize.append(paper_data)
-        #     categorized_papers_to_record[paper_index] = paper_data
-        # if gpt_keywords_info[paper_index].get("Keywords_GPT3.5_filtered", "") == "UNKNOWN":
-        #     papers_to_categorize.append(paper_data)
-        #     categorized_papers_to_record[paper_index] = paper_data
-
+        
     papers_to_categorize = papers_to_categorize[0:5]
     categorized_papers_to_record = {}
     for paper_data in papers_to_categorize:
         categorized_papers_to_record[str(paper_data["id"])] = categorized_papers_to_record_tmp[str(paper_data["id"])]
     
-    # breakpoint()
 
     processing_papers_number = len(papers_to_categorize)
     confnavigator_logger.info(
@@ -320,7 +307,7 @@ def process_args():
         "--output-folder",
         type=str,
         dest="output_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21",
+        default=f"***",
         help="The folder path for the output files.",
     )
 
