@@ -8,12 +8,12 @@ import utils as utils
 
 from dotenv import load_dotenv
 
-
 from paper_pdf_cleaner import paper_pdf_cleaning
 
 from paper_pdf_parser import paper_pdf_parsing
 from paper_gpt_summarizer import paper_gpt_summarizing
 from paper_gpt_keywords_categorizer import paper_gpt_categorizing
+
 
 def process_args():
     parser = argparse.ArgumentParser()
@@ -22,7 +22,8 @@ def process_args():
         "--arxiv-pdf-folder",
         type=str,
         dest="arxiv_pdf_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/arxiv_papers",
+        default=
+        f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/arxiv_papers",
         help="The folder path for the output files.",
     )
 
@@ -30,7 +31,8 @@ def process_args():
         "--openreview-pdf-folder",
         type=str,
         dest="openreview_pdf_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/openreview_pdf",
+        default=
+        f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/openreview_pdf",
         help="The folder path for the output files.",
     )
 
@@ -38,7 +40,8 @@ def process_args():
         "--nips-csv",
         type=str,
         dest="nips_csv",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21/nips2023_new.csv",
+        default=
+        f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21/nips2023_new.csv",
         help="The file path for the csv file.",
     )
 
@@ -54,6 +57,7 @@ def process_args():
 
     return args
 
+
 if __name__ == "__main__":
 
     args = process_args()
@@ -67,23 +71,21 @@ if __name__ == "__main__":
     do_summarizing_paper = True
     do_categorizing_paper = True
 
-
     if do_cleaning_paper:
 
         # Paper cleaning
         paper_pdf_cleaning(
             arxiv_paper_pdf_folder=args.arxiv_pdf_folder,
-            openreview_paper_pdf_folder=args.openreview_pdf_folder, csv_file_path=args.nips_csv, combined_paper_pdf_folder=combined_paper_pdf_folder,
-            output_folder=args.output_folder
-            )
-    
+            openreview_paper_pdf_folder=args.openreview_pdf_folder,
+            csv_file_path=args.nips_csv,
+            combined_paper_pdf_folder=combined_paper_pdf_folder,
+            output_folder=args.output_folder)
+
     if do_parsing_paper:
         paper_pdf_parsing(args.output_folder)
 
     if do_summarizing_paper:
         paper_gpt_summarizing(args.output_folder)
-    
+
     if do_categorizing_paper:
         paper_gpt_categorizing(args.output_folder)
-
-

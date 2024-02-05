@@ -33,7 +33,7 @@ class PaperChapter(ABC):
         # Finding the index of the last second "\n" character in the string to remove the footer
         indices = [i for i, char in enumerate(page_raw_text) if char == "\n"]
         if len(indices) > 1:
-            last_second_newline_index = indices[-2] 
+            last_second_newline_index = indices[-2]
             self.raw_text += page_raw_text[:last_second_newline_index + 2]
         else:
             self.raw_text += page_raw_text
@@ -395,7 +395,8 @@ class PaperPDFParser():
         }
 
         if parsed_paper_json_file_path == "":
-            parsed_paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(self.pdf_file_path)
+            parsed_paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(
+                self.pdf_file_path)
 
         utils.dump_json_file(chapters_content, parsed_paper_json_file_path)
         with open(parsed_paper_json_file_path, 'w') as file:
@@ -404,12 +405,15 @@ class PaperPDFParser():
         return parsed_paper_json_file_path
 
 
-def parse_paper(paper_pdf_file, is_full_paper: bool = False, is_redo_parsing: bool = False):
+def parse_paper(paper_pdf_file,
+                is_full_paper: bool = False,
+                is_redo_parsing: bool = False):
 
-    paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(paper_pdf_file)
+    paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(
+        paper_pdf_file)
 
     if os.path.isfile(paper_json_file_path) and not is_redo_parsing:
-        # Skip parsing 
+        # Skip parsing
         return paper_json_file_path
 
     try:
@@ -420,7 +424,8 @@ def parse_paper(paper_pdf_file, is_full_paper: bool = False, is_redo_parsing: bo
             paper_pdf = PaperPDFParser(paper_pdf_file)
             paper_pdf.paper_pdf_parsing()
 
-            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters(paper_json_file_path)
+            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters(
+                paper_json_file_path)
 
             return parsed_paper_json_file_path
     except Exception as _e:
@@ -440,7 +445,7 @@ def convert_full_pdf_to_text(pdf_file_path):
     # Iterate over each page and extract text
     text = ""
     for page_num in range(min(len(document), 3)):
-        page = document.load_page(page_num)  # zero-based index  
+        page = document.load_page(page_num)  # zero-based index
         text += page.get_text()[:-4]
 
     # Extract the file name with extension
@@ -454,7 +459,6 @@ def convert_full_pdf_to_text(pdf_file_path):
     utils.dump_json_file({"FullPage": text}, full_paper_json_file_path)
 
     return full_paper_json_file_path
-
 
 
 def parse_all_papers(paper_metadata_summary, paper_overview):
@@ -491,41 +495,38 @@ def parse_all_papers(paper_metadata_summary, paper_overview):
             title_empty_papers.append(parsed_paper_json_file)
         if parsed_paper_json["Abstract"] == "":
             abstract_empty_papers.append(parsed_paper_json_file)
-        
+
         if parsed_paper_json["Introduction"] == "":
             introduction_empty_papers.append(parsed_paper_json_file)
-        
+
         if parsed_paper_json["Conclusion"] == "":
             conclusion_empty_papers.append(parsed_paper_json_file)
 
-
-        if parsed_paper_json["Abstract"] == "" and parsed_paper_json["Introduction"] == "" and parsed_paper_json["Conclusion"] == "":
-            parsed_paper_json_file = parse_paper(paper_pdf_file, is_full_paper=True)
+        if parsed_paper_json["Abstract"] == "" and parsed_paper_json[
+                "Introduction"] == "" and parsed_paper_json["Conclusion"] == "":
+            parsed_paper_json_file = parse_paper(paper_pdf_file,
+                                                 is_full_paper=True)
             paper_metadata["parsed_json_file"] = parsed_paper_json_file
             paper_metadata["fullpage"] = True
-        
+
         print(f"parsed json file {paper_metadata['parsed_json_file']}")
-        
 
         paper_overview["mapping_pdf_to_json"][
-                paper_pdf_file] = parsed_paper_json_file
+            paper_pdf_file] = parsed_paper_json_file
         paper_overview["mapping_json_to_pdf"][
-                parsed_paper_json_file] = paper_pdf_file
-        
+            parsed_paper_json_file] = paper_pdf_file
+
     paper_overview['2023_paper_parsed_jsons_count'] = count
 
     paper_overview['2023_paper_title_empty'] = title_empty_papers
-    paper_overview['2023_paper_title_empty_count'] = len(
-        title_empty_papers)
+    paper_overview['2023_paper_title_empty_count'] = len(title_empty_papers)
     paper_overview['2023_paper_abstract_empty'] = abstract_empty_papers
     paper_overview['2023_paper_abstract_empty_count'] = len(
         abstract_empty_papers)
-    paper_overview[
-        '2023_paper_introduction_empty'] = introduction_empty_papers
+    paper_overview['2023_paper_introduction_empty'] = introduction_empty_papers
     paper_overview['2023_paper_introduction_empty_count'] = len(
         introduction_empty_papers)
-    paper_overview[
-        '2023_paper_conclusion_empty'] = conclusion_empty_papers
+    paper_overview['2023_paper_conclusion_empty'] = conclusion_empty_papers
     paper_overview['2023_paper_conclusion_empty_count'] = len(
         conclusion_empty_papers)
 
@@ -546,22 +547,23 @@ def cross_check_paper_titles(paper_metadata_summary, paper_overview):
     for id, paper_metadata in paper_metadata_summary.items():
         title_to_index_csv[paper_metadata['title']] = id
 
-
     for title in titles_from_arxiv:
         trie.insert(title)
-
 
     count = 0
     pdf_paper_title_to_index = {}
     unmatched_titles_from_pdf = {}
     for paper_id, paper_metadata in paper_metadata_summary.items():
-        
-        if "parsed_json_file" not in paper_metadata or paper_metadata["parsed_json_file"] == None or not os.path.isfile(paper_metadata["parsed_json_file"]):
+
+        if "parsed_json_file" not in paper_metadata or paper_metadata[
+                "parsed_json_file"] == None or not os.path.isfile(
+                    paper_metadata["parsed_json_file"]):
             continue
         parsed_json_file = paper_metadata["parsed_json_file"]
 
         parsed_paper_data = utils.read_json_file(parsed_json_file)
-        if parsed_paper_data == None or parsed_paper_data.get('Title', "") == "":
+        if parsed_paper_data == None or parsed_paper_data.get('Title',
+                                                              "") == "":
             continue
         paper_title = parsed_paper_data['Title']
         matched_title_from_csv = trie.search(paper_title)
@@ -574,16 +576,17 @@ def cross_check_paper_titles(paper_metadata_summary, paper_overview):
             count += 1
         else:
             unmatched_titles_from_pdf[paper_title] = {}
-            unmatched_titles_from_pdf[paper_title]["parsed_json_file"] = paper_metadata["parsed_json_file"]
-            unmatched_titles_from_pdf[paper_title]["pdf_file_to_parse"] = paper_metadata["pdf_file_to_parse"]
-            unmatched_titles_from_pdf[paper_title]["paper_title_from_pdf"] = paper_title
-
+            unmatched_titles_from_pdf[paper_title][
+                "parsed_json_file"] = paper_metadata["parsed_json_file"]
+            unmatched_titles_from_pdf[paper_title][
+                "pdf_file_to_parse"] = paper_metadata["pdf_file_to_parse"]
+            unmatched_titles_from_pdf[paper_title][
+                "paper_title_from_pdf"] = paper_title
 
     paper_overview["papers_matched_count"] = count
     paper_overview["csv_title_to_id"] = title_to_index_csv
     paper_overview["pdf_title_to_id"] = pdf_paper_title_to_index
     paper_overview["unmatched_titles_from_pdf"] = unmatched_titles_from_pdf
-
 
     return paper_metadata_summary, paper_overview
 
@@ -603,12 +606,12 @@ def process_args():
 
     return args
 
+
 def paper_pdf_parsing(output_folder):
 
     paper_cleaning_info_file = f"{output_folder}/{PAPER_CLEANING_INFO_FILE}"
 
     paper_parsing_info_file = f"{output_folder}/{PAPER_PARSING_INFO_FILE}"
-
 
     paper_overview_file = f"{output_folder}/paper_overview.json"
 
@@ -619,7 +622,8 @@ def paper_pdf_parsing(output_folder):
 
         # Start the timer for paper parsing
         start_time = time.time()
-        paper_metadata_summary, paper_overview = parse_all_papers(paper_metadata_summary, paper_overview)
+        paper_metadata_summary, paper_overview = parse_all_papers(
+            paper_metadata_summary, paper_overview)
         # End the timer for paper parsing
         end_time = time.time()
         time_taken = end_time - start_time
@@ -627,9 +631,6 @@ def paper_pdf_parsing(output_folder):
 
         utils.dump_json_file(paper_metadata_summary, paper_parsing_info_file)
         utils.dump_json_file(paper_overview, paper_overview_file)
-    
-    
-
 
 
 if __name__ == "__main__":
@@ -645,68 +646,45 @@ if __name__ == "__main__":
     # parse pdfs
     paper_pdf_parsing(args.output_folder)
 
-    
-
-
-
-
-
-
-
-
 # else:
-    #     paper_metadata_summary = utils.read_json_file(paper_parsing_result_file)
-    #     paper_overview = utils.read_json_file(paper_overview_file)
+#     paper_metadata_summary = utils.read_json_file(paper_parsing_result_file)
+#     paper_overview = utils.read_json_file(paper_overview_file)
 
-  
-    
-    # # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
-    # paper_metadata_summary, paper_overview = cross_check_paper_titles(paper_metadata_summary, paper_overview)
+# # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
+# paper_metadata_summary, paper_overview = cross_check_paper_titles(paper_metadata_summary, paper_overview)
 
+# # papers_after_matching_file = f"{output_folder}/papers_after_matching.json"
 
-    # # papers_after_matching_file = f"{output_folder}/papers_after_matching.json"
+# utils.dump_json_file(paper_metadata_summary, papers_after_matching_file)
+# utils.dump_json_file(paper_overview, paper_overview_file)
 
-    # utils.dump_json_file(paper_metadata_summary, papers_after_matching_file)
-    # utils.dump_json_file(paper_overview, paper_overview_file)    
+# mismatch_between_openreview_and_arxiv = []
 
-    # mismatch_between_openreview_and_arxiv = []
+# summary_data = utils.read_json_file(f"/import/snvm-sc-podscratch1/qingjianl2/nips/arxiv_outputs/summary_selected_papers.json")
+# summary_count = 0
+# for _, paper_summary in summary_data.items():
+#     pdf_paper_title = paper_summary["paper_title"]
 
-    # summary_data = utils.read_json_file(f"/import/snvm-sc-podscratch1/qingjianl2/nips/arxiv_outputs/summary_selected_papers.json")
-    # summary_count = 0
-    # for _, paper_summary in summary_data.items():
-    #     pdf_paper_title = paper_summary["paper_title"]
+#     if pdf_paper_title not in paper_overview["pdf_title_to_id"]:
+#         mismatch_between_openreview_and_arxiv.append(pdf_paper_title)
+#         continue
 
-    #     if pdf_paper_title not in paper_overview["pdf_title_to_id"]:
-    #         mismatch_between_openreview_and_arxiv.append(pdf_paper_title)
-    #         continue
+#     paper_id = paper_overview["pdf_title_to_id"][pdf_paper_title]
+#     if "summary" in paper_summary:
+#         paper_metadata_summary[paper_id]['summary'] = paper_summary.get("summary", "")
+#         paper_metadata_summary[paper_id]['response'] = paper_summary.get("response", "")
+#         paper_metadata_summary[paper_id]['prompt'] = paper_summary.get("prompt", "")
+#         paper_metadata_summary[paper_id]['prompt_tokens'] = paper_summary.get("prompt_tokens", 0)
+#         paper_metadata_summary[paper_id]['completion_tokens'] = paper_summary.get("completion_tokens", 0)
+#         paper_metadata_summary[paper_id]['total_tokens'] = paper_summary.get("total_tokens", 0)
+#         summary_count += 1
 
+# papers_after_summary_file = f"{args.output_folder}/papers_after_summary.json"
+# breakpoint()
+# utils.dump_json_file(paper_metadata_summary, papers_after_summary_file)
 
-    #     paper_id = paper_overview["pdf_title_to_id"][pdf_paper_title]
-    #     if "summary" in paper_summary:
-    #         paper_metadata_summary[paper_id]['summary'] = paper_summary.get("summary", "")
-    #         paper_metadata_summary[paper_id]['response'] = paper_summary.get("response", "")
-    #         paper_metadata_summary[paper_id]['prompt'] = paper_summary.get("prompt", "")
-    #         paper_metadata_summary[paper_id]['prompt_tokens'] = paper_summary.get("prompt_tokens", 0)
-    #         paper_metadata_summary[paper_id]['completion_tokens'] = paper_summary.get("completion_tokens", 0)
-    #         paper_metadata_summary[paper_id]['total_tokens'] = paper_summary.get("total_tokens", 0)
-    #         summary_count += 1
-    
-    # papers_after_summary_file = f"{args.output_folder}/papers_after_summary.json"
-    # breakpoint()
-    # utils.dump_json_file(paper_metadata_summary, papers_after_summary_file)
+# paper_overview["summary_count"] = summary_count
+# utils.dump_json_file(paper_overview, paper_overview_file)
 
-
-    # paper_overview["summary_count"] = summary_count
-    # utils.dump_json_file(paper_overview, paper_overview_file)
-
-    # mismatch_between_openreview_and_arxiv_file = f"{args.output_folder}/mismatch_between_openreview_and_arxiv_file.json"
-    # utils.dump_json_file(mismatch_between_openreview_and_arxiv, mismatch_between_openreview_and_arxiv_file)
-
-
-
-
-
-
-
-
-
+# mismatch_between_openreview_and_arxiv_file = f"{args.output_folder}/mismatch_between_openreview_and_arxiv_file.json"
+# utils.dump_json_file(mismatch_between_openreview_and_arxiv, mismatch_between_openreview_and_arxiv_file)

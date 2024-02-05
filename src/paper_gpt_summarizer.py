@@ -18,15 +18,16 @@ import tiktoken
 response_queue = queue.Queue()
 
 
-def num_tokens_from_string(string: str, encoding_name: str = "cl100k_base") -> int:
+def num_tokens_from_string(string: str,
+                           encoding_name: str = "cl100k_base") -> int:
     """Returns the number of tokens in a text string."""
     encoding = tiktoken.get_encoding(encoding_name)
     num_tokens = len(encoding.encode(string))
     return num_tokens
 
 
-
-def create_prompt_based_on_paper_json_file(paper_json_file, ratio: float = 1.0):
+def create_prompt_based_on_paper_json_file(paper_json_file,
+                                           ratio: float = 1.0):
     paper_parsed_data = utils.read_json_file(paper_json_file)
     if paper_parsed_data == None:
         return ""
@@ -34,7 +35,7 @@ def create_prompt_based_on_paper_json_file(paper_json_file, ratio: float = 1.0):
         paper_content = paper_parsed_data.get("fullpage", "")
     else:
         paper_content = f"{paper_parsed_data.get('Abstract', '')} \n {paper_parsed_data.get('Introduction', '')} \n {paper_parsed_data.get('Conclusion', '')} \n"
-    
+
     if ratio < 1.0:
         # Truncate the message if necessary
         truncate_index = int(len(paper_content) * ratio)
@@ -43,7 +44,6 @@ def create_prompt_based_on_paper_json_file(paper_json_file, ratio: float = 1.0):
     elif ratio > 1:
         breakpoint()
 
-    
     prompt = f"Summarize the text delimited by triple backticks in the following points: 1. summarize the main focus, 2. provide the main challenges, 3. provide the solutions and main novelties, 4. provide the results, 5. summarize keywords, 6. provide future research suggestions, 7. other information. ```{paper_content}```"
     #TODO: Add reference info to the prompt to ask for the most relevant references.
 
@@ -62,8 +62,10 @@ def process_papers_chunk(papers_chunk, thread_id):
             if "summary" in paper_data:
                 print(f"Paper {paper_data['id']} has been processed.")
                 continue
-            
-            if "parsed_json_file" not in paper_data or paper_data["parsed_json_file"] == None or not os.path.isfile(paper_data["parsed_json_file"]):
+
+            if "parsed_json_file" not in paper_data or paper_data[
+                    "parsed_json_file"] == None or not os.path.isfile(
+                        paper_data["parsed_json_file"]):
                 continue
             paper_json_file = paper_data["parsed_json_file"]
             prompt = create_prompt_based_on_paper_json_file(paper_json_file)
@@ -72,12 +74,15 @@ def process_papers_chunk(papers_chunk, thread_id):
             print(f"Original number of tokens {number_tokens}")
             if number_tokens >= 16385:
                 ratio = float(16385) / (number_tokens + 200) * 0.8
-                prompt = create_prompt_based_on_paper_json_file(paper_json_file, ratio)
+                prompt = create_prompt_based_on_paper_json_file(
+                    paper_json_file, ratio)
             else:
                 ratio = 1.0
-            
+
             number_tokens = num_tokens_from_string(prompt)
-            print(f"Original number of tokens {number_tokens} with ratio {ratio}")
+            print(
+                f"Original number of tokens {number_tokens} with ratio {ratio}"
+            )
 
             # Start the timer
             start_time = time.time()
@@ -92,19 +97,19 @@ def process_papers_chunk(papers_chunk, thread_id):
             time_taken = end_time - start_time
             confnavigator_logger.info(
                 f"Took {time_taken} s to process paper - {paper_data['id']}")
-            
+
             # time.sleep(40)
 
             response_queue.put((thread_id, prompt, paper_data['id'], response))
         except Exception as e:
-            confnavigator_logger.info(f"{thread_id} - paper {paper_data['id']} run into errors: {e}")
+            confnavigator_logger.info(
+                f"{thread_id} - paper {paper_data['id']} run into errors: {e}")
 
 
 def divide_chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
-
 
 
 # Function to continuously process responses from the queue
@@ -118,7 +123,8 @@ def process_queue(summarized_papers_to_record, gpt_summary_tmp_file):
                 paper_index = str(paper_index)
                 summary = response.choices[0].message.content.strip()
                 summarized_papers_to_record[paper_index]["summary"] = summary
-                summarized_papers_to_record[paper_index]["response"] = str(response)
+                summarized_papers_to_record[paper_index]["response"] = str(
+                    response)
                 summarized_papers_to_record[paper_index]["prompt"] = prompt
                 summarized_papers_to_record[paper_index][
                     "prompt_tokens"] = response.usage.prompt_tokens
@@ -126,8 +132,10 @@ def process_queue(summarized_papers_to_record, gpt_summary_tmp_file):
                     "completion_tokens"] = response.usage.completion_tokens
                 summarized_papers_to_record[paper_index][
                     "total_tokens"] = response.usage.total_tokens
-                summarized_papers_to_record[paper_index]["thread_id"] = thread_id
-                utils.dump_json_file(summarized_papers_to_record, gpt_summary_tmp_file)
+                summarized_papers_to_record[paper_index][
+                    "thread_id"] = thread_id
+                utils.dump_json_file(summarized_papers_to_record,
+                                     gpt_summary_tmp_file)
             except Exception as _e:
                 confnavigator_logger.info(_e)
                 traceback.print_exc()
@@ -135,13 +143,12 @@ def process_queue(summarized_papers_to_record, gpt_summary_tmp_file):
                 # For example, if a specific 'end' signal is put in the queue by main thread
 
 
-
 def call_openai_api_to_summarize_paper(
         paper_parsing_info,
         gpt_summary_library_file,
         n_threads: int = 5,
         openai_model_type: str = "gpt-3.5-turbo-1106"):
-    
+
     if os.path.isfile(gpt_summary_library_file):
         gpt_summary_info = utils.read_json_file(gpt_summary_library_file)
     else:
@@ -154,7 +161,9 @@ def call_openai_api_to_summarize_paper(
     skip_paper_index = ['470', '1450']
 
     for paper_index, paper_data in paper_parsing_info.items():
-        if type(paper_data) is dict and paper_index not in gpt_summary_info and paper_index not in skip_paper_index:
+        if type(
+                paper_data
+        ) is dict and paper_index not in gpt_summary_info and paper_index not in skip_paper_index:
             papers_to_summarize.append(paper_data)
             summarized_papers_to_record[paper_index] = paper_data
 
@@ -194,11 +203,12 @@ def call_openai_api_to_summarize_paper(
                                   args=(paper_indexes_chunks[i], i))
         threads.append(thread)
         thread.start()
-    
+
     # Starting the queue processing thread
     gpt_summary_tmp_file = os.path.join(os.getcwd(), "gpt_summary_tmp.json")
     queue_thread = threading.Thread(target=process_queue,
-                                    args=(summarized_papers_to_record, gpt_summary_tmp_file))
+                                    args=(summarized_papers_to_record,
+                                          gpt_summary_tmp_file))
     queue_thread.start()
 
     # Joining threads
@@ -217,7 +227,7 @@ def call_openai_api_to_summarize_paper(
     confnavigator_logger.info(
         f"{n_threads} threads cost {time_taken} s to process {processing_papers_number} prompts"
     )
-    
+
     summarized_papers_to_record = utils.read_json_file(gpt_summary_tmp_file)
     input_total_tokens = 0
     output_total_tokens = 0
@@ -225,23 +235,26 @@ def call_openai_api_to_summarize_paper(
     for paper_index, paper_data in summarized_papers_to_record.items():
         if paper_index not in gpt_summary_info and "summary" in paper_data:
             input_total_tokens += math.ceil(
-                    paper_data["prompt_tokens"] / 1000) * 1000
+                paper_data["prompt_tokens"] / 1000) * 1000
             output_total_tokens += math.ceil(
-                    paper_data["completion_tokens"] / 1000) * 1000
-        
+                paper_data["completion_tokens"] / 1000) * 1000
+
             gpt_summary_info[paper_index] = paper_data
 
-    confnavigator_logger.info(f"Summarized {len(summarized_papers_to_record)} papers.")
+    confnavigator_logger.info(
+        f"Summarized {len(summarized_papers_to_record)} papers.")
     total_cost = input_total_tokens * 0.001 / 2000 + output_total_tokens * 0.002 / 1000
     confnavigator_logger.info(
-        f"Total input tokens is {input_total_tokens} and total output tokens is {output_total_tokens}. Total Cost is {total_cost}")
+        f"Total input tokens is {input_total_tokens} and total output tokens is {output_total_tokens}. Total Cost is {total_cost}"
+    )
 
     utils.dump_json_file(gpt_summary_info, gpt_summary_library_file)
 
     return gpt_summary_library_file
 
 
-def integrate_gpt_summary(paper_parsing_info_file, gpt_summary_library_file, paper_summary_info_file):
+def integrate_gpt_summary(paper_parsing_info_file, gpt_summary_library_file,
+                          paper_summary_info_file):
     paper_parsing_info = utils.read_json_file(paper_parsing_info_file)
     gpt_summary_info = utils.read_json_file(gpt_summary_library_file)
 
@@ -249,11 +262,12 @@ def integrate_gpt_summary(paper_parsing_info_file, gpt_summary_library_file, pap
         if "summary" in paper_parsing_info or paper_index not in gpt_summary_info:
             continue
         paper_info["summary"] = gpt_summary_info[paper_index]["summary"]
-        paper_info["prompt_tokens"] = gpt_summary_info[paper_index]["prompt_tokens"]
-        paper_info["completion_tokens"] = gpt_summary_info[paper_index]["completion_tokens"]
-    
-    utils.dump_json_file(paper_parsing_info, paper_summary_info_file)
+        paper_info["prompt_tokens"] = gpt_summary_info[paper_index][
+            "prompt_tokens"]
+        paper_info["completion_tokens"] = gpt_summary_info[paper_index][
+            "completion_tokens"]
 
+    utils.dump_json_file(paper_parsing_info, paper_summary_info_file)
 
 
 def process_args():
@@ -272,23 +286,26 @@ def process_args():
     return args
 
 
-
 def paper_gpt_summarizing(output_folder):
     gpt_summary_library_file = f"{output_folder}/{GPT_SUMMARY_LIBRARY_FILE}"
     paper_parsing_info_file = f"{output_folder}/{PAPER_PARSING_INFO_FILE}"
     paper_summary_info_file = f"{output_folder}/{PAPER_SUMMARY_INFO_FILE}"
 
-    assert os.path.isfile(paper_parsing_info_file) == True, f"The provided {paper_parsing_info_file} could not be found!"
+    assert os.path.isfile(
+        paper_parsing_info_file
+    ) == True, f"The provided {paper_parsing_info_file} could not be found!"
     paper_parsing_info = utils.read_json_file(paper_parsing_info_file)
 
-    gpt_summary_library_file = call_openai_api_to_summarize_paper(paper_parsing_info=paper_parsing_info, gpt_summary_library_file=gpt_summary_library_file)
-
+    gpt_summary_library_file = call_openai_api_to_summarize_paper(
+        paper_parsing_info=paper_parsing_info,
+        gpt_summary_library_file=gpt_summary_library_file)
 
     # Combine the summary info from gpt_summary_library.json into paper summary info.
 
-    paper_summary_info_file = integrate_gpt_summary(paper_parsing_info_file=paper_parsing_info_file, gpt_summary_library_file=gpt_summary_library_file, paper_summary_info_file=paper_summary_info_file)
-
-
+    paper_summary_info_file = integrate_gpt_summary(
+        paper_parsing_info_file=paper_parsing_info_file,
+        gpt_summary_library_file=gpt_summary_library_file,
+        paper_summary_info_file=paper_summary_info_file)
 
 
 if __name__ == '__main__':
@@ -297,13 +314,8 @@ if __name__ == '__main__':
 
     # Load environmental variables from the .env file
     load_dotenv()
-    
+
     assert "OPENAI_API_KEY" in os.environ, "OPENAI_API_KEY environment variable not found"
     assert "OPEN_AI_MODEL_TYPE" in os.environ, "OPEN_AI_MODEL_TYPE environment variable not found"
 
     paper_gpt_summarizing(args.output_folder)
-
-
-
-
-
