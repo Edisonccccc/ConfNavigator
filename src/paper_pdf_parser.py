@@ -13,6 +13,7 @@ import fitz  # PyMuPDF
 import utils as utils
 from utils import CONCLUSION_TITLES, Trie
 from logger import confnavigator_logger
+from utils import PAPER_PARSING_INFO_FILE, PAPER_CLEANING_INFO_FILE
 
 
 class PaperChapter(ABC):
@@ -298,8 +299,6 @@ class PaperPDFParser():
         page = document.load_page(0)  # zero-based index
         page_text = page.get_text()
 
-        # assert '2023' in page_text, f"{self.pdf_file_path} is not published in 2023."
-
         while page_index < len(document):
             page = document.load_page(page_index)  # zero-based index
             page_text = page.get_text()
@@ -386,21 +385,7 @@ class PaperPDFParser():
                 return True
         return False
 
-    def dump_parsed_chapters(self, output_folder_path: str = ""):
-
-        # Extract the file name with extension
-        filename_with_extension = os.path.basename(self.pdf_file_path)
-
-        # Split the file name from its extension
-        filename_without_extension, _ = os.path.splitext(
-            filename_with_extension)
-
-        if output_folder_path == "":
-            output_folder_path = os.path.dirname(self.pdf_file_path)
-        parsed_chapters_json_file_path = os.path.join(
-            output_folder_path,
-            f"{filename_without_extension}_parsed_chapters.json")
-
+    def dump_parsed_chapters(self, parsed_paper_json_file_path: str = ""):
         chapters_content = {
             "Title": self.title.print_chapter(),
             "Abstract": self.abstract.print_chapter(),
@@ -409,14 +394,23 @@ class PaperPDFParser():
             "References": self.references.print_chapter()
         }
 
-        utils.dump_json_file(chapters_content, parsed_chapters_json_file_path)
-        with open(parsed_chapters_json_file_path, 'w') as file:
+        if parsed_paper_json_file_path == "":
+            parsed_paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(self.pdf_file_path)
+
+        utils.dump_json_file(chapters_content, parsed_paper_json_file_path)
+        with open(parsed_paper_json_file_path, 'w') as file:
             json.dump(chapters_content, file, indent=4)
 
-        return parsed_chapters_json_file_path
+        return parsed_paper_json_file_path
 
 
-def parse_paper(paper_pdf_file, is_full_paper: bool = False):
+def parse_paper(paper_pdf_file, is_full_paper: bool = False, is_redo_parsing: bool = False):
+
+    paper_json_file_path = utils.create_parsed_json_file_path_by_pdf_path(paper_pdf_file)
+
+    if os.path.isfile(paper_json_file_path) and not is_redo_parsing:
+        # Skip parsing 
+        return paper_json_file_path
 
     try:
         if is_full_paper:
@@ -426,13 +420,7 @@ def parse_paper(paper_pdf_file, is_full_paper: bool = False):
             paper_pdf = PaperPDFParser(paper_pdf_file)
             paper_pdf.paper_pdf_parsing()
 
-            # # TODO: validate if the parsing file is valid like each chapter has content
-            # assert paper_pdf.title.content != "", f"{paper_pdf_file} - title is empty"
-            # assert paper_pdf.abstract.content != "", f"{paper_pdf_file} - abstract is empty"
-            # assert paper_pdf.introduction.content != "", f"{paper_pdf_file} - introduction is empty"
-            # assert paper_pdf.conclusion.content != "", f"{paper_pdf_file} - conclusion is empty"
-
-            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters()
+            parsed_paper_json_file_path = paper_pdf.dump_parsed_chapters(paper_json_file_path)
 
             return parsed_paper_json_file_path
     except Exception as _e:
@@ -491,13 +479,10 @@ def parse_all_papers(paper_metadata_summary, paper_overview):
             continue
 
         parsed_paper_json_file = parse_paper(paper_pdf_file)
-        breakpoint()
+
         if not os.path.isfile(parsed_paper_json_file):
             paper_metadata["parsing_error"] = parsed_paper_json_file
             continue
-
-
-
 
         paper_metadata["parsed_json_file"] = parsed_paper_json_file
         parsed_paper_json = utils.read_json_file(parsed_paper_json_file)
@@ -520,14 +505,6 @@ def parse_all_papers(paper_metadata_summary, paper_overview):
             paper_metadata["fullpage"] = True
         
         print(f"parsed json file {paper_metadata['parsed_json_file']}")
-
-
-        # TODO: validate if the parsing file is valid like each chapter has content
-        # assert paper_pdf.title.content != "", f"{paper_pdf_file} - title is empty"
-        # assert paper_pdf.abstract.content != "", f"{paper_pdf_file} - abstract is empty"
-        # assert paper_pdf.introduction.content != "", f"{paper_pdf_file} - introduction is empty"
-        # assert paper_pdf.conclusion.content != "", f"{paper_pdf_file} - conclusion is empty"
-        
         
 
         paper_overview["mapping_pdf_to_json"][
@@ -593,7 +570,6 @@ def cross_check_paper_titles(paper_metadata_summary, paper_overview):
         if matched_title_from_csv:
             paper_metadata["paper_title_from_pdf"] = paper_title
             paper_metadata["paper_title_from_csv"] = matched_title_from_csv
-            paper_metadata["parsed_chapters_json"] = parsed_json_file
             paper_metadata["matched_with_downloaded_pdf"] = True
             count += 1
         else:
@@ -616,28 +592,10 @@ def process_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--conference-paper-folder",
-        dest="conference_paper_folder",
-        required=False,
-        default="/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/openreview_pdf",
-        help="The folder path of conference papers",
-    )
-    
-    # "/import/snvm-sc-podscratch1/qingjianl2/nips_2023_conference_papers/neurips2023_pdf_0109",
-
-    parser.add_argument(
-        "--test",
-        dest="test",
-        action='store_true',
-        required=False,
-        help="For testing purpose.",
-    )
-
-    parser.add_argument(
         "--output-folder",
         type=str,
         dest="output_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs",
+        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21",
         help="The folder path for the output files.",
     )
 
@@ -645,26 +603,18 @@ def process_args():
 
     return args
 
+def paper_pdf_parsing(output_folder):
 
-if __name__ == "__main__":
+    paper_cleaning_info_file = f"{output_folder}/{PAPER_CLEANING_INFO_FILE}"
 
-    args = process_args()
+    paper_parsing_info_file = f"{output_folder}/{PAPER_PARSING_INFO_FILE}"
 
-    # To skip the paper parsing
-    skip_paper_parsing = True
 
-    # Load environmental variables from the .env file
-    load_dotenv()
-
-    paper_cleaning_json_file = f"{args.output_folder}/paper_cleaning_with_arxiv_and_openreview.json"
-    
-
-    paper_parsing_result_file = f"{args.output_folder}/paper_parsing_result.json"
-    paper_overview_file = f"{args.output_folder}/paper_overview.json"
+    paper_overview_file = f"{output_folder}/paper_overview.json"
 
     # Step 2: Paper parsing - parse the pdf into a json with different chapters
     if not skip_paper_parsing:
-        paper_metadata_summary = utils.read_json_file(paper_cleaning_json_file)
+        paper_metadata_summary = utils.read_json_file(paper_cleaning_info_file)
         paper_overview = utils.read_json_file(paper_overview_file)
 
         # Start the timer for paper parsing
@@ -675,59 +625,83 @@ if __name__ == "__main__":
         time_taken = end_time - start_time
         confnavigator_logger.info(f"Parsing 2023 papers cost {time_taken} s")
 
-        utils.dump_json_file(paper_metadata_summary, paper_parsing_result_file)
+        utils.dump_json_file(paper_metadata_summary, paper_parsing_info_file)
         utils.dump_json_file(paper_overview, paper_overview_file)
-
-    else:
-        paper_metadata_summary = utils.read_json_file(paper_parsing_result_file)
-        paper_overview = utils.read_json_file(paper_overview_file)
-
-    # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
-    paper_metadata_summary, paper_overview = cross_check_paper_titles(paper_metadata_summary, paper_overview)
-
-
-    papers_after_matching_file = f"{args.output_folder}/papers_after_matching.json"
-    utils.dump_json_file(paper_metadata_summary, papers_after_matching_file)
-    utils.dump_json_file(paper_overview, paper_overview_file)
-
-    mismatch_between_openreview_and_arxiv = []
-
-    summary_data = utils.read_json_file(f"/import/snvm-sc-podscratch1/qingjianl2/nips/arxiv_outputs/summary_selected_papers.json")
-    summary_count = 0
-    for _, paper_summary in summary_data.items():
-        pdf_paper_title = paper_summary["paper_title"]
-
-        if pdf_paper_title not in paper_overview["pdf_title_to_id"]:
-            mismatch_between_openreview_and_arxiv.append(pdf_paper_title)
-            continue
-
-
-        paper_id = paper_overview["pdf_title_to_id"][pdf_paper_title]
-        if "summary" in paper_summary:
-            paper_metadata_summary[paper_id]['summary'] = paper_summary.get("summary", "")
-            paper_metadata_summary[paper_id]['response'] = paper_summary.get("response", "")
-            paper_metadata_summary[paper_id]['prompt'] = paper_summary.get("prompt", "")
-            paper_metadata_summary[paper_id]['prompt_tokens'] = paper_summary.get("prompt_tokens", 0)
-            paper_metadata_summary[paper_id]['completion_tokens'] = paper_summary.get("completion_tokens", 0)
-            paper_metadata_summary[paper_id]['total_tokens'] = paper_summary.get("total_tokens", 0)
-            summary_count += 1
     
-    papers_after_summary_file = f"{args.output_folder}/papers_after_summary.json"
-    breakpoint()
-    utils.dump_json_file(paper_metadata_summary, papers_after_summary_file)
-
-
-    paper_overview["summary_count"] = summary_count
-    utils.dump_json_file(paper_overview, paper_overview_file)
-
-    mismatch_between_openreview_and_arxiv_file = f"{args.output_folder}/mismatch_between_openreview_and_arxiv_file.json"
-    utils.dump_json_file(mismatch_between_openreview_and_arxiv, mismatch_between_openreview_and_arxiv_file)
+    
 
 
 
+if __name__ == "__main__":
+
+    args = process_args()
+
+
+    # To skip the paper parsing
+    skip_paper_parsing = False
+
+    # Load environmental variables from the .env file
+    load_dotenv()
+
+    # parse pdfs
+    paper_pdf_parsing(args.output_folder)
+
+    
 
 
 
+
+
+
+
+
+# else:
+    #     paper_metadata_summary = utils.read_json_file(paper_parsing_result_file)
+    #     paper_overview = utils.read_json_file(paper_overview_file)
+
+  
+    
+    # # Step 3: Paper cross checking - compare the title in PDF matches with the paper title from arxic csv
+    # paper_metadata_summary, paper_overview = cross_check_paper_titles(paper_metadata_summary, paper_overview)
+
+
+    # # papers_after_matching_file = f"{output_folder}/papers_after_matching.json"
+
+    # utils.dump_json_file(paper_metadata_summary, papers_after_matching_file)
+    # utils.dump_json_file(paper_overview, paper_overview_file)    
+
+    # mismatch_between_openreview_and_arxiv = []
+
+    # summary_data = utils.read_json_file(f"/import/snvm-sc-podscratch1/qingjianl2/nips/arxiv_outputs/summary_selected_papers.json")
+    # summary_count = 0
+    # for _, paper_summary in summary_data.items():
+    #     pdf_paper_title = paper_summary["paper_title"]
+
+    #     if pdf_paper_title not in paper_overview["pdf_title_to_id"]:
+    #         mismatch_between_openreview_and_arxiv.append(pdf_paper_title)
+    #         continue
+
+
+    #     paper_id = paper_overview["pdf_title_to_id"][pdf_paper_title]
+    #     if "summary" in paper_summary:
+    #         paper_metadata_summary[paper_id]['summary'] = paper_summary.get("summary", "")
+    #         paper_metadata_summary[paper_id]['response'] = paper_summary.get("response", "")
+    #         paper_metadata_summary[paper_id]['prompt'] = paper_summary.get("prompt", "")
+    #         paper_metadata_summary[paper_id]['prompt_tokens'] = paper_summary.get("prompt_tokens", 0)
+    #         paper_metadata_summary[paper_id]['completion_tokens'] = paper_summary.get("completion_tokens", 0)
+    #         paper_metadata_summary[paper_id]['total_tokens'] = paper_summary.get("total_tokens", 0)
+    #         summary_count += 1
+    
+    # papers_after_summary_file = f"{args.output_folder}/papers_after_summary.json"
+    # breakpoint()
+    # utils.dump_json_file(paper_metadata_summary, papers_after_summary_file)
+
+
+    # paper_overview["summary_count"] = summary_count
+    # utils.dump_json_file(paper_overview, paper_overview_file)
+
+    # mismatch_between_openreview_and_arxiv_file = f"{args.output_folder}/mismatch_between_openreview_and_arxiv_file.json"
+    # utils.dump_json_file(mismatch_between_openreview_and_arxiv, mismatch_between_openreview_and_arxiv_file)
 
 
 

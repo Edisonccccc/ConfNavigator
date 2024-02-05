@@ -2,3 +2,4 @@ openai
 PyMuPDF
 pandas
 python-dotenv
+tiktoken

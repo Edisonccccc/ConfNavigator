@@ -1,6 +1,14 @@
 import json
 import os
 
+PAPER_CLEANING_INFO_FILE = "paper_cleaning_info.json"
+PAPER_PARSING_INFO_FILE = "paper_parsing_info.json"
+PAPER_SUMMARY_INFO_FILE = "paper_summary_info.json"
+GPT_SUMMARY_LIBRARY_FILE = "gpt_summary_library.json"
+GPT_KEYWORDS_LIBRARY_FILE = "gpt_keywords_library.json"
+PAPER_KEYWORDS_INFO_FILE = "paper_keywords_info.json"
+
+
 CONCLUSION_TITLES = [
     "Conclusions", "Conclusion", "CONCLUSION"
     "Conclusions and Future Work", "Conclusion and Future Work",
@@ -58,6 +66,21 @@ def can_be_int(s):
         return True  # Return True if successful
     except ValueError:
         return False  # Return False if a ValueError is raised
+
+def create_parsed_json_file_path_by_pdf_path(pdf_file_path):
+
+    filename_with_extension = os.path.basename(pdf_file_path)
+    filename_without_extension, _ = os.path.splitext(
+        filename_with_extension)
+    output_folder_path = os.path.dirname(pdf_file_path)
+
+    parsed_paper_json_file_path = os.path.join(
+        output_folder_path,
+        f"{filename_without_extension}_parsed_chapters.json")
+
+    return parsed_paper_json_file_path
+
+
 
 
 class TrieNode:
