@@ -23,7 +23,7 @@ def process_args():
         type=str,
         dest="arxiv_pdf_folder",
         default=
-        f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/arxiv_papers",
+        f"***",
         help="The folder path for the output files.",
     )
 
@@ -32,7 +32,7 @@ def process_args():
         type=str,
         dest="openreview_pdf_folder",
         default=
-        f"/import/snvm-sc-podscratch1/qingjianl2/nips/2023_papers/openreview_pdf",
+        f"***",
         help="The folder path for the output files.",
     )
 
@@ -41,7 +41,7 @@ def process_args():
         type=str,
         dest="nips_csv",
         default=
-        f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21/nips2023_new.csv",
+        f"***.csv",
         help="The file path for the csv file.",
     )
 
@@ -49,7 +49,7 @@ def process_args():
         "--output-folder",
         type=str,
         dest="output_folder",
-        default=f"/import/snvm-sc-podscratch1/qingjianl2/nips/outputs_01_21",
+        default=f"***",
         help="The folder path for the output files.",
     )
 
